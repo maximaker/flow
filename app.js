@@ -126,9 +126,15 @@ const app = {
     location.reload();
   },
 
-  changePassword(userId, newPassword) {
+  async changePassword(userId, newPassword) {
     const current = this.getCurrentUser();
     if (userId === this.currentUserId || this.canManageUser(userId)) {
+      try {
+        await pb.collection('users').update(userId, { password: newPassword, passwordConfirm: newPassword, oldPassword: newPassword });
+      } catch(e) {
+        // oldPassword only required when changing own password — retry without it for admin changing others
+        try { await pb.collection('users').update(userId, { password: newPassword, passwordConfirm: newPassword }); } catch(e2) { this.toast('Failed to update password', 'error'); return; }
+      }
       this.passwords[userId] = this.simpleHash(newPassword);
       this.savePasswords();
       this.toast('Password updated');
@@ -141,10 +147,10 @@ const app = {
     const targetUser = this.users.find(u => u.id === userId);
     if (!targetUser) return;
     const newPw = prompt(`Set new password for ${targetUser.name}:`);
-    if (newPw && newPw.length >= 3) {
+    if (newPw && newPw.length >= 8) {
       this.changePassword(userId, newPw);
     } else if (newPw !== null) {
-      this.toast('Password must be at least 3 characters', 'error');
+      this.toast('Password must be at least 8 characters', 'error');
     }
   },
 
@@ -294,7 +300,7 @@ const app = {
     for (const user of this.users) {
       const was = prevUsers.find(p => p.id === user.id);
       if (was && JSON.stringify(user) !== JSON.stringify(was)) {
-        try { await pb.collection('users').update(user.id, { name: user.name, role: user.role, color: user.color }); } catch(e) { console.warn('PB update user:', e.message); }
+        try { await pb.collection('users').update(user.id, { name: user.name, email: user.email, role: user.role, color: user.color }); } catch(e) { console.warn('PB update user:', e.message); }
       }
     }
 
