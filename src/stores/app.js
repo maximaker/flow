@@ -12,7 +12,7 @@ export const useAppStore = defineStore('app', {
   appStarted: false,
   loginError: false,
   theme: 'light', draggedSubtaskId: null,
-  currentUserId: 'u1',
+  currentUserId: null,
   boardColumns: [],
   collapsedTasks: [], // accordion state for tree view (persisted)
   expandedTasks: [], // explicitly expanded tasks (we track expanded since default=collapsed)
