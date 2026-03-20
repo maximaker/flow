@@ -3,7 +3,7 @@
 // Command Palette, Bulk Actions, Analytics, Workload, Celebrations, Drag-reorder
 
 // ===== PocketBase Client =====
-const pb = new PocketBase('http://pb.thedigitalvitamins.com');
+const pb = new PocketBase('https://pb.thedigitalvitamins.com');
 
 const app = {
   // Data
