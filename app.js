@@ -27,9 +27,6 @@ const app = {
   // Feature: Recently viewed tasks
   recentTasks: [],
 
-  // Feature: Passwords (kept for backward compat)
-  passwords: {},
-
   // PocketBase sync state
   _pbSnapshot: {},
   _pbSyncTimer: null,
@@ -38,7 +35,10 @@ const app = {
   async init() {
     await this.loadData();
     if (!this.users.length) this.seedData();
-    this.boardColumns = JSON.parse(localStorage.getItem('fb_board_columns') || 'null') || [{id:'todo',name:'To Do'},{id:'in-progress',name:'In Progress'},{id:'done',name:'Done'}];
+    // Prefer PocketBase settings (shared across devices) over localStorage
+    this.boardColumns = this._pbBoardColumns ||
+      JSON.parse(localStorage.getItem('fb_board_columns') || 'null') ||
+      [{id:'todo',name:'To Do'},{id:'in-progress',name:'In Progress'},{id:'done',name:'Done'}];
 
     // Check PocketBase auth session
     if (pb.authStore.isValid) {
@@ -60,7 +60,8 @@ const app = {
     this.recentTasks = JSON.parse(localStorage.getItem('fb_recent_tasks') || '[]');
     this.loadTreeState();
     this.loadSortPref();
-    this.loadTemplates();
+    // Use PocketBase-loaded templates if available, otherwise fall back to localStorage
+    if (this._pbTemplates) { this.templates = this._pbTemplates; } else { this.loadTemplates(); }
     this.applyTheme();
     this.bindEvents();
     this.checkDeadlineNotifications();
@@ -76,30 +77,6 @@ const app = {
         if (e.key === 'Enter') this.login();
       });
     });
-  },
-
-  // ===== PASSWORD MANAGEMENT =====
-  loadPasswords() {
-    this.passwords = JSON.parse(localStorage.getItem('fb_passwords') || '{}');
-    if (Object.keys(this.passwords).length === 0) {
-      this.passwords = {
-        u1: this.simpleHash('admin123'),
-        u2: this.simpleHash('marcus'),
-        u3: this.simpleHash('emily'),
-        u4: this.simpleHash('alex')
-      };
-      this.savePasswords();
-    }
-  },
-  savePasswords() { localStorage.setItem('fb_passwords', JSON.stringify(this.passwords)); },
-  simpleHash(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash |= 0;
-    }
-    return hash.toString(36);
   },
 
   async login() {
@@ -135,8 +112,6 @@ const app = {
         // oldPassword only required when changing own password — retry without it for admin changing others
         try { await pb.collection('users').update(userId, { password: newPassword, passwordConfirm: newPassword }); } catch(e2) { this.toast('Failed to update password', 'error'); return; }
       }
-      this.passwords[userId] = this.simpleHash(newPassword);
-      this.savePasswords();
       this.toast('Password updated');
     } else {
       this.toast('Permission denied', 'error');
@@ -179,6 +154,12 @@ const app = {
       this.labels = labels.map(r => ({ id: r.id, name: r.name, color: r.color }));
       this.theme = localStorage.getItem('fb_theme') || 'light';
       this._pbSnapshot = this._snapshot();
+      // Load shared settings (boardColumns, templates) from PocketBase if the collection exists
+      try {
+        const settings = await pb.collection('settings').getOne('global');
+        if (settings.boardColumns) this._pbBoardColumns = JSON.parse(settings.boardColumns);
+        if (settings.templates) this._pbTemplates = JSON.parse(settings.templates);
+      } catch(e) { /* settings collection not yet created — use localStorage fallback */ }
     } catch(e) {
       console.warn('PocketBase load failed, falling back to localStorage:', e);
       try {
@@ -305,6 +286,22 @@ const app = {
     }
 
     this._pbSnapshot = this._snapshot();
+  },
+
+  // Sync boardColumns + templates to a PocketBase 'settings' collection (single 'global' record).
+  // Silently no-ops if the collection hasn't been created in PocketBase yet.
+  async _syncSettings() {
+    if (!pb.authStore.isValid) return;
+    const data = {
+      boardColumns: JSON.stringify(this.boardColumns),
+      templates: JSON.stringify(this.templates),
+    };
+    try {
+      await pb.collection('settings').update('global', data);
+    } catch(e) {
+      // Record may not exist yet — try creating it
+      try { await pb.collection('settings').create({ id: 'global', ...data }); } catch {}
+    }
   },
 
   // ===== SEED DATA =====
@@ -2630,21 +2627,43 @@ const app = {
 
   closeUserModal() { document.getElementById('user-modal-overlay').classList.remove('show'); },
 
-  saveUser() {
+  async saveUser() {
     const name = document.getElementById('modal-user-name').value.trim();
     const email = document.getElementById('modal-user-email').value.trim();
-    if (!name) { this.toast('Enter a name','error'); return; }
+    if (!name) { this.toast('Enter a name', 'error'); return; }
+    if (!email) { this.toast('Enter an email', 'error'); return; }
     const color = document.querySelector('#user-color-picker .color-swatch.active')?.dataset.color || '#6366f1';
     const role = document.getElementById('modal-user-role').value;
-    if (this.editingUserId) { const u = this.users.find(x => x.id === this.editingUserId); if (u) { u.name = name; u.email = email; u.role = role; u.color = color; } }
-    else { const newId = this.generateId(); this.users.push({ id: newId, name, email, role, color }); }
-    this.save(); this.closeUserModal(); this.render();
-    this.toast(this.editingUserId ? 'Member updated' : 'Member added', 'success');
+    if (this.editingUserId) {
+      const u = this.users.find(x => x.id === this.editingUserId);
+      if (u) { u.name = name; u.email = email; u.role = role; u.color = color; }
+      this.save(); this.closeUserModal(); this.render();
+      this.toast('Member updated', 'success');
+    } else {
+      // Generate a random temporary password for the new PocketBase user
+      const tempPass = Math.random().toString(36).slice(-6) + Math.random().toString(36).slice(-6).toUpperCase() + '1!';
+      try {
+        const record = await pb.collection('users').create({ name, email, role, color, password: tempPass, passwordConfirm: tempPass });
+        this.users.push({ id: record.id, name, email, role, color });
+        this.save(); this.closeUserModal(); this.render();
+        this.toast('Member added — share temp password with them', 'success');
+        alert(`New member created!\nEmail: ${email}\nTemporary password: ${tempPass}\n\nPlease share this with them so they can log in and change it.`);
+      } catch(e) {
+        this.toast('Failed to create member: ' + (e.message || 'unknown error'), 'error');
+      }
+    }
   },
 
-  deleteUser(id) {
-    if (this.users.length <= 1) { this.toast('Cannot remove last member','error'); return; }
+  async deleteUser(id) {
+    if (this.users.length <= 1) { this.toast('Cannot remove last member', 'error'); return; }
     if (!confirm('Remove this member?')) return;
+    try {
+      await pb.collection('users').delete(id);
+    } catch(e) {
+      this.toast('Failed to remove member from server: ' + (e.message || 'unknown error'), 'error');
+      console.warn('PB delete user:', e.message);
+      return;
+    }
     this.users = this.users.filter(u => u.id !== id);
     this.tasks.forEach(t => { if (t.assigneeId === id) t.assigneeId = ''; });
     this.save(); this.render(); this.toast('Member removed', 'success');
@@ -3469,7 +3488,7 @@ const app = {
   loadTemplates() {
     try { this.templates = JSON.parse(localStorage.getItem('fb_templates') || '[]'); } catch { this.templates = []; }
   },
-  saveTemplates() { localStorage.setItem('fb_templates', JSON.stringify(this.templates)); },
+  saveTemplates() { localStorage.setItem('fb_templates', JSON.stringify(this.templates)); this._syncSettings(); },
 
   populateTemplateSelect() {
     const sel = document.getElementById('template-select');
@@ -3695,6 +3714,7 @@ const app = {
   // ===== BOARD COLUMN MANAGEMENT =====
   saveBoardColumns() {
     localStorage.setItem('fb_board_columns', JSON.stringify(this.boardColumns));
+    this._syncSettings();
   },
 
   showColumnManager() {
