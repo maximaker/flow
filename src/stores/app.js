@@ -49,7 +49,7 @@ export const useAppStore = defineStore('app', {
 
     // Check PocketBase auth session
     if (pb.authStore.isValid) {
-      this.currentUserId = pb.authStore.record.id;
+      this.currentUserId = pb.authStore.model.id;
       this.startApp();
     } else {
       this.showLoginScreen();
@@ -86,7 +86,7 @@ export const useAppStore = defineStore('app', {
     if (!email || !password) { this.loginError = true; return; }
     try {
       await pb.collection('users').authWithPassword(email, password);
-      this.currentUserId = pb.authStore.record.id;
+      this.currentUserId = pb.authStore.model.id;
       this.loginError = false;
       this.startApp();
     } catch(e) {

@@ -42,7 +42,7 @@ const app = {
 
     // Check PocketBase auth session
     if (pb.authStore.isValid) {
-      this.currentUserId = pb.authStore.record.id;
+      this.currentUserId = pb.authStore.model.id;
       this.startApp();
     } else {
       this.showLoginScreen();
@@ -85,7 +85,7 @@ const app = {
     if (!email || !password) { document.getElementById('login-error').classList.remove('hidden'); return; }
     try {
       await pb.collection('users').authWithPassword(email, password);
-      this.currentUserId = pb.authStore.record.id;
+      this.currentUserId = pb.authStore.model.id;
       document.getElementById('login-error').classList.add('hidden');
       document.getElementById('login-email').value = '';
       document.getElementById('login-password').value = '';
