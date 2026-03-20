@@ -1,5 +1,5 @@
 <template>
-  <div class="login-screen" id="login-screen">
+  <div class="login-screen" id="login-screen" style="display:flex">
     <div class="login-card">
       <div class="login-logo">
         <svg class="flow-logo" width="36" height="36" viewBox="0 0 32 32">
