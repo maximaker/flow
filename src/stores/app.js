@@ -36,6 +36,10 @@ export const useAppStore = defineStore('app', {
 
   actions: {
   async init() {
+    // Apply theme immediately so CSS variables resolve before any content renders
+    this.theme = localStorage.getItem('fb_theme') || 'light';
+    this.applyTheme();
+
     await this.loadData();
     if (!this.users.length) this.seedData();
     // Prefer PocketBase settings (shared across devices) over localStorage
