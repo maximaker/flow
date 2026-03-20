@@ -70,11 +70,11 @@ const app = {
 
   showLoginScreen() {
     document.getElementById('login-screen').style.display = 'flex';
-    const sel = document.getElementById('login-user');
-    sel.innerHTML = this.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
-    document.getElementById('login-password').focus();
-    document.getElementById('login-password').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') this.login();
+    document.getElementById('login-email').focus();
+    ['login-email', 'login-password'].forEach(id => {
+      document.getElementById(id).addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') this.login();
+      });
     });
   },
 
@@ -103,18 +103,18 @@ const app = {
   },
 
   async login() {
-    const userId = document.getElementById('login-user').value;
+    const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
-    const user = this.users.find(u => u.id === userId);
-    if (!user) { document.getElementById('login-error').style.display = 'block'; return; }
+    if (!email || !password) { document.getElementById('login-error').classList.remove('hidden'); return; }
     try {
-      await pb.collection('users').authWithPassword(user.email, password);
+      await pb.collection('users').authWithPassword(email, password);
       this.currentUserId = pb.authStore.record.id;
-      document.getElementById('login-error').style.display = 'none';
+      document.getElementById('login-error').classList.add('hidden');
+      document.getElementById('login-email').value = '';
       document.getElementById('login-password').value = '';
       this.startApp();
     } catch(e) {
-      document.getElementById('login-error').style.display = 'block';
+      document.getElementById('login-error').classList.remove('hidden');
       document.getElementById('login-password').classList.add('shake');
       setTimeout(() => document.getElementById('login-password').classList.remove('shake'), 500);
     }
@@ -853,7 +853,7 @@ const app = {
 
     const hasAnyFocus = myUrgent.length > 0 || myWeek.length > 0;
     if (hasAnyFocus) {
-      focusEl.style.display = '';
+      focusEl.classList.remove('hidden');
       // Today tab
       focusListEl.innerHTML = myUrgent.length
         ? myUrgent.map(renderFocusItem).join('')
@@ -874,7 +874,7 @@ const app = {
       }
       weekListEl.innerHTML = weekHtml || '<div class="today-focus-empty" style="padding:8px;color:var(--text-light);font-size:13px">No tasks with due dates this week.</div>';
     } else {
-      focusEl.style.display = 'none';
+      focusEl.classList.add('hidden');
     }
 
     const total = this.tasks.length, done = this.tasks.filter(t => t.status === 'done').length;
@@ -1661,10 +1661,10 @@ const app = {
     if (parentLinkEl) {
       if (task.parentId) {
         const parent = this.tasks.find(t => t.id === task.parentId);
-        parentLinkEl.style.display = 'block';
+        parentLinkEl.classList.remove('hidden');
         parentLinkEl.innerHTML = `<a href="#" onclick="event.preventDefault();app.openTask('${task.parentId}')" class="panel-parent-link-a">&larr; Back to ${this.esc(parent?.title || 'parent')}</a>`;
       } else {
-        parentLinkEl.style.display = 'none';
+        parentLinkEl.classList.add('hidden');
         parentLinkEl.innerHTML = '';
       }
     }
@@ -1775,8 +1775,8 @@ const app = {
     const blockedBy = this.getBlockedBy(task);
     const blocking = this.getBlocking(task.id);
 
-    if (!blockedBy && !blocking.length) { sec.style.display = 'none'; return; }
-    sec.style.display = 'block';
+    if (!blockedBy && !blocking.length) { sec.classList.add('hidden'); return; }
+    sec.classList.remove('hidden');
     let html = '';
     if (blockedBy) html += `<div class="dep-item blocked"><span class="dep-icon">&#128683;</span> Blocked by: <strong>${this.esc(blockedBy.title)}</strong> (${blockedBy.status})</div>`;
     blocking.forEach(t => { html += `<div class="dep-item blocking"><span class="dep-icon">&#9888;</span> Blocking: <strong>${this.esc(t.title)}</strong></div>`; });
@@ -1839,7 +1839,8 @@ const app = {
   renderSubtasks(task) {
     const children = this.getChildren(task.id);
     const info = this.getSubtaskInfo(task);
-    document.getElementById('subtask-progress').style.display = info.total > 0 ? 'flex' : 'none';
+    const spEl = document.getElementById('subtask-progress');
+    if (info.total > 0) { spEl.classList.remove('hidden'); } else { spEl.classList.add('hidden'); }
     document.getElementById('subtask-progress-fill').style.width = info.percent + '%';
     document.getElementById('subtask-progress-text').textContent = info.percent + '%';
 
@@ -2356,7 +2357,7 @@ const app = {
       html += `<div class="chip-dd-item ${!task.projectId ? 'active' : ''}" onclick="app.setChipValue('project','')">No project</div>`;
     } else if (type === 'due') {
       html = `<div style="padding:8px">
-        <input type="date" id="chip-date-input" value="${task.dueDate||''}" onchange="app.setChipValue('due',this.value)" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)">
+        <input type="date" id="chip-date-input" value="${task.dueDate||''}" onchange="app.setChipValue('due',this.value)" class="chip-date-input">
         <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
           <button class="quickpick-btn" onclick="app.setChipDate('today')">Today</button>
           <button class="quickpick-btn" onclick="app.setChipDate('tomorrow')">Tomorrow</button>
@@ -2371,11 +2372,11 @@ const app = {
     const panelRect = document.querySelector('.panel-main').getBoundingClientRect();
     dd.style.top = (rect.bottom - panelRect.top + 4) + 'px';
     dd.style.left = Math.max(0, rect.left - panelRect.left) + 'px';
-    dd.style.display = 'block';
+    dd.classList.remove('hidden');
 
     const closeHandler = (e) => {
       if (!dd.contains(e.target) && !chip.contains(e.target)) {
-        dd.style.display = 'none';
+        dd.classList.add('hidden');
         document.removeEventListener('click', closeHandler);
       }
     };
@@ -2388,7 +2389,7 @@ const app = {
     if (type === 'assignee') { task.assigneeId = value; document.getElementById('panel-assignee').value = value; }
     else if (type === 'project') { task.projectId = value; document.getElementById('panel-project').value = value; }
     else if (type === 'due') { task.dueDate = value; document.getElementById('panel-due').value = value; }
-    document.getElementById('chip-dropdown').style.display = 'none';
+    document.getElementById('chip-dropdown').classList.add('hidden');
     this.save(); this.updateContextChips(task); this.render();
   },
 
@@ -3692,14 +3693,14 @@ const app = {
 
   showColumnManager() {
     const overlay = document.getElementById('column-manager-overlay');
-    overlay.style.display = 'flex';
+    overlay.classList.remove('hidden');
     overlay.classList.add('show');
     this.renderColumnManager();
   },
 
   closeColumnManager() {
     const overlay = document.getElementById('column-manager-overlay');
-    overlay.style.display = 'none';
+    overlay.classList.add('hidden');
     overlay.classList.remove('show');
   },
 

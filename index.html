@@ -27,15 +27,15 @@
     <p class="login-subtitle">Sign in to your workspace</p>
     <div class="login-form">
       <div class="form-group">
-        <label>User</label>
-        <select id="login-user" class="login-input"></select>
+        <label>Email</label>
+        <input type="email" id="login-email" class="login-input" placeholder="you@flow.io" autocomplete="email">
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="login-password" class="login-input" placeholder="Enter your password">
+        <input type="password" id="login-password" class="login-input" placeholder="Enter your password" autocomplete="current-password">
       </div>
       <button class="btn-primary login-btn" onclick="app.login()">Sign In</button>
-      <p class="login-error" id="login-error" style="display:none">Invalid password</p>
+      <p class="login-error hidden" id="login-error">Invalid password</p>
     </div>
   </div>
 </div>
@@ -228,7 +228,7 @@
     <div class="content-area" id="content-area">
       <!-- Home View -->
       <div class="view active" id="view-home">
-        <div class="today-focus-card" id="today-focus" style="display:none">
+        <div class="today-focus-card hidden" id="today-focus">
           <div class="focus-header">
             <div class="focus-tabs">
               <button class="focus-tab active" data-focus="today" onclick="app.switchFocusTab('today')">Today</button>
@@ -401,7 +401,7 @@
         <button class="btn-icon" onclick="app.closeTaskPanel()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
-        <span class="panel-task-status" id="panel-task-status" style="display:none"></span>
+        <span class="panel-task-status" id="panel-task-status"></span>
       </div>
       <div class="panel-actions">
         <button class="btn-icon" onclick="app.deleteCurrentTask()" title="Delete task">
@@ -411,7 +411,7 @@
     </div>
     <div class="panel-body">
       <div class="panel-main">
-        <div id="panel-parent-link" style="display:none"></div>
+        <div id="panel-parent-link" class="hidden"></div>
 
         <!-- Title -->
         <input type="text" class="panel-title-input" id="panel-title" placeholder="Task name">
@@ -440,11 +440,11 @@
             <span id="chip-project-text">No project</span>
           </div>
           <!-- Hidden dropdown for chips -->
-          <div class="chip-dropdown" id="chip-dropdown" style="display:none"></div>
+          <div class="chip-dropdown hidden" id="chip-dropdown"></div>
         </div>
 
         <!-- Hidden selects for data binding (keep IDs for compatibility) -->
-        <div style="display:none">
+        <div class="hidden">
           <select id="panel-assignee"></select>
           <input type="date" id="panel-due">
           <select id="panel-project"></select>
@@ -483,7 +483,7 @@
               Add subtask
             </button>
           </div>
-          <div class="subtask-progress" id="subtask-progress" style="display:none">
+          <div class="subtask-progress hidden" id="subtask-progress">
             <div class="progress-bar"><div class="progress-fill" id="subtask-progress-fill"></div></div>
             <span class="progress-text" id="subtask-progress-text">0%</span>
           </div>
@@ -502,8 +502,8 @@
             </div>
           </div>
           <!-- Hidden elements for backward compatibility -->
-          <div id="comment-list" class="comment-list" style="display:none"></div>
-          <div id="activity-log" class="activity-log" style="display:none"></div>
+          <div id="comment-list" class="comment-list hidden"></div>
+          <div id="activity-log" class="activity-log hidden"></div>
         </div>
 
         <!-- More Details (collapsible) -->
@@ -520,7 +520,7 @@
             </select></div>
             <div class="meta-row"><label>Labels</label><div class="label-picker" id="panel-labels-visible"></div></div>
             <div class="meta-row"><label>Blocked by</label><select id="panel-blocked-visible" class="meta-select" onchange="app.syncMoreField('blocked')"><option value="">None</option></select></div>
-            <div class="panel-section" id="panel-deps-section" style="display:none">
+            <div class="panel-section hidden" id="panel-deps-section">
               <h4>Dependencies</h4><div id="panel-deps-info" class="deps-info"></div>
             </div>
             <div class="panel-section">
@@ -753,7 +753,7 @@
   </div>
 
   <!-- Column Manager Modal -->
-  <div class="modal-overlay" id="column-manager-overlay" style="display:none">
+  <div class="modal-overlay hidden" id="column-manager-overlay">
     <div class="modal" id="column-manager" style="max-width:400px">
       <div class="modal-header"><h3>Manage Columns</h3><button class="btn-icon" onclick="app.closeColumnManager()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
       <div class="modal-body" id="column-manager-body"></div>
