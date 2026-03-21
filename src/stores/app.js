@@ -103,16 +103,17 @@ export const useAppStore = defineStore('app', {
     location.reload();
   },
 
-  async changePassword(userId, newPassword) {
-    const current = this.getCurrentUser();
+  async changePassword(userId, newPassword, oldPassword) {
     if (userId === this.currentUserId || this.canManageUser(userId)) {
       try {
-        await pb.collection('users').update(userId, { password: newPassword, passwordConfirm: newPassword, oldPassword: newPassword });
+        const payload = { password: newPassword, passwordConfirm: newPassword };
+        // PocketBase requires oldPassword when a user changes their own password
+        if (userId === this.currentUserId && oldPassword) payload.oldPassword = oldPassword;
+        await pb.collection('users').update(userId, payload);
+        this.toast('Password updated');
       } catch(e) {
-        // oldPassword only required when changing own password — retry without it for admin changing others
-        try { await pb.collection('users').update(userId, { password: newPassword, passwordConfirm: newPassword }); } catch(e2) { this.toast('Failed to update password', 'error'); return; }
+        this.toast('Failed to update password', 'error');
       }
-      this.toast('Password updated');
     } else {
       this.toast('Permission denied', 'error');
     }
@@ -121,9 +122,15 @@ export const useAppStore = defineStore('app', {
   showChangePassword(userId) {
     const targetUser = this.users.find(u => u.id === userId);
     if (!targetUser) return;
+    const isSelf = userId === this.currentUserId;
+    let oldPw = null;
+    if (isSelf) {
+      oldPw = prompt('Enter your current password:');
+      if (oldPw === null) return;
+    }
     const newPw = prompt(`Set new password for ${targetUser.name}:`);
     if (newPw && newPw.length >= 8) {
-      this.changePassword(userId, newPw);
+      this.changePassword(userId, newPw, oldPw);
     } else if (newPw !== null) {
       this.toast('Password must be at least 8 characters', 'error');
     }
