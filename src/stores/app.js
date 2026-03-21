@@ -9,6 +9,7 @@ import { userActions } from './actions/userActions.js'
 import { taskActions } from './actions/taskActions.js'
 import { renderActions } from './actions/renderActions.js'
 import { tourActions } from './actions/tourActions.js'
+import { convTaskActions } from './actions/convTaskActions.js'
 
 export const useAppStore = defineStore('app', {
   state: () => ({
@@ -52,6 +53,11 @@ export const useAppStore = defineStore('app', {
   tourStep: 0,
   tourCompleted: false,
 
+  // Feature: Conversational task creation
+  convActive: false,
+  convStep: 0,
+  convAnswers: {},
+
   // ===== INIT =====
   }),
 
@@ -65,6 +71,7 @@ export const useAppStore = defineStore('app', {
   ...taskActions,
   ...renderActions,
   ...tourActions,
+  ...convTaskActions,
 
   // ===== UTILITY DELEGATES (thin wrappers so this.xxx() keeps working) =====
   generateId: utils.generateId,
@@ -287,12 +294,13 @@ export const useAppStore = defineStore('app', {
         this.hideContextMenu();
         this.hideMentions();
         if (document.getElementById('cmd-overlay').classList.contains('show')) { this.closeCommandPalette(); return; }
+        if (document.getElementById('conv-task-overlay')?.classList.contains('show')) { this.closeConvTask(); return; }
         if (document.getElementById('task-panel').classList.contains('open')) { this.closeTaskPanel(); return; }
         document.querySelectorAll('.modal-overlay.show').forEach(m => m.classList.remove('show'));
         this.clearSelection();
       }
-      // N = new task (when no input focused)
-      if (e.key === 'n' && !this.isInputFocused()) { e.preventDefault(); this.showTaskModal(); }
+      // N = new task (when no input focused) — opens conversational flow
+      if (e.key === 'n' && !this.isInputFocused()) { e.preventDefault(); this.openConvTask(); }
       // B = board, T = timeline, H = home
       if (!this.isInputFocused()) {
         if (e.key === 'b') this.switchView('board');

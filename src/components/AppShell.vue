@@ -198,7 +198,7 @@
                   </div>
                   <svg class="first-run-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                 </div>
-                <div class="first-run-step" onclick="app.showTaskModal()">
+                <div class="first-run-step" onclick="app.openConvTask()">
                   <div class="first-run-step-num">2</div>
                   <div class="first-run-step-body">
                     <strong>Add your first task</strong>
@@ -260,7 +260,7 @@
         <div class="view" id="view-my-tasks">
           <div class="my-tasks-header">
             <div class="my-tasks-header-left">
-              <button class="btn-primary" onclick="app.showTaskModal()">
+              <button class="btn-primary" onclick="app.openConvTask()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Add Task
                 <kbd class="btn-kbd">N</kbd>
@@ -992,6 +992,41 @@
         <div class="shortcut-row"><kbd>Esc</kbd><span>Close panel</span></div>
       </div>
     </button>
+
+    <!-- Conversational task creation -->
+    <div class="conv-task-overlay" id="conv-task-overlay">
+      <div class="conv-task-modal" id="conv-task-modal">
+        <div class="conv-task-header">
+          <div class="conv-task-header-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            New task
+          </div>
+          <div class="conv-task-header-right">
+            <button class="conv-advanced-link" onclick="app.closeConvTask(); app.showTaskModal()">Advanced form</button>
+            <button class="conv-close-btn" onclick="app.closeConvTask()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Answered questions scroll up here as a thread -->
+        <div class="conv-thread" id="conv-thread"></div>
+
+        <!-- Current question -->
+        <div class="conv-current-block">
+          <p class="conv-current-question" id="conv-current-question"></p>
+          <p class="conv-current-hint" id="conv-current-hint"></p>
+        </div>
+
+        <!-- Dynamic input area -->
+        <div class="conv-input-area" id="conv-input-area"></div>
+
+        <!-- Skip -->
+        <div class="conv-skip-row">
+          <button class="conv-skip-btn" id="conv-skip-btn" onclick="app._convSkip()">Skip</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Tour overlay (spotlight backdrop) -->
     <div id="tour-overlay" class="tour-overlay"></div>
