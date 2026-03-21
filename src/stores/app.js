@@ -28,6 +28,9 @@ export const useAppStore = defineStore('app', {
   // Feature: Recently viewed tasks
   recentTasks: [],
 
+  // Feature: Notification preferences
+  notifPrefs: { deadlines: true, assignments: true, comments: true, email: false },
+
   // PocketBase sync state
   _pbSnapshot: {},
   _pbSyncTimer: null,
@@ -63,6 +66,7 @@ export const useAppStore = defineStore('app', {
     // Load real data now that we are authenticated
     await this.loadData();
     if (!this.users.length) this.seedData();
+    this.migrateOldSubtasks(); // convert legacy subtasks[] arrays to top-level task records
     // Prefer PocketBase settings (shared across devices) over localStorage
     this.boardColumns = this._pbBoardColumns ||
       JSON.parse(localStorage.getItem('fb_board_columns') || 'null') ||
@@ -72,6 +76,7 @@ export const useAppStore = defineStore('app', {
     this.recentTasks = JSON.parse(localStorage.getItem('fb_recent_tasks') || '[]');
     this.loadTreeState();
     this.loadSortPref();
+    try { const p = JSON.parse(localStorage.getItem('fb_notif_prefs')); if (p) this.notifPrefs = { ...this.notifPrefs, ...p }; } catch {}
     // Use PocketBase-loaded templates if available, otherwise fall back to localStorage
     if (this._pbTemplates) { this.templates = this._pbTemplates; } else { this.loadTemplates(); }
     this.applyTheme();
@@ -108,9 +113,19 @@ export const useAppStore = defineStore('app', {
 
   logout() {
     pb.authStore.clear();
+    // Reset all data state so the login screen starts clean
+    this.users = []; this.projects = []; this.tasks = [];
+    this.notifications = []; this.labels = [];
     this.currentUserId = null;
-    this.appStarted = false;
-    location.reload();
+    this.currentView = 'home';
+    this.selectedProjectId = null;
+    this.currentTaskId = null;
+    this.undoStack = [];
+    this.recentTasks = [];
+    this.expandedTasks = [];
+    this._pbSnapshot = {};
+    if (this._pbSyncTimer) { clearTimeout(this._pbSyncTimer); this._pbSyncTimer = null; }
+    this.appStarted = false; // flips Vue back to <LoginScreen>
   },
 
   async changePassword(userId, newPassword, oldPassword) {
@@ -247,6 +262,7 @@ export const useAppStore = defineStore('app', {
     localStorage.setItem('fb_notifications', JSON.stringify(this.notifications));
     localStorage.setItem('fb_labels', JSON.stringify(this.labels));
     localStorage.setItem('fb_theme', this.theme);
+    localStorage.setItem('fb_notif_prefs', JSON.stringify(this.notifPrefs));
     // Sync to PocketBase in background (debounced)
     this._schedulePbSync();
   },
@@ -497,6 +513,7 @@ export const useAppStore = defineStore('app', {
     document.getElementById('notification-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       document.getElementById('notification-dropdown').classList.toggle('show');
+      this.renderNotifPrefs(); // sync toggle checked states from store
     });
     document.querySelectorAll('.notif-tab').forEach(tab => {
       tab.addEventListener('click', () => {
@@ -571,8 +588,7 @@ export const useAppStore = defineStore('app', {
       else if (taskCard) { e.preventDefault(); this.showContextMenu(e, 'task', taskCard.dataset.id); }
       else if (projectItem) {
         e.preventDefault();
-        const dot = projectItem.querySelector('.project-dot');
-        const pId = projectItem.querySelector('.btn-icon-sm')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+        const pId = projectItem.dataset.projectId;
         if (pId) this.showContextMenu(e, 'project', pId);
       }
     });
@@ -666,7 +682,7 @@ export const useAppStore = defineStore('app', {
   renderSidebar() {
     const pl = document.getElementById('project-list');
     pl.innerHTML = this.projects.map(p => `
-      <div class="project-item" onclick="app.selectProject('${p.id}')">
+      <div class="project-item" data-project-id="${p.id}" onclick="app.selectProject('${p.id}')">
         <span class="project-dot" style="background:${p.color}"></span>
         <span class="project-item-name">${this.esc(p.name)}</span>
         <span class="nav-badge" style="display:inline-flex">${this.tasks.filter(t => t.projectId === p.id && t.status !== 'done').length}</span>
@@ -1654,8 +1670,21 @@ export const useAppStore = defineStore('app', {
   clearNotifications() { this.notifications = []; this.save(); this.renderNotifications(); this.updateFaviconBadge(); },
   addNotification(type, text, taskId) { this.notifications.unshift({ id: this.generateId(), type, text, taskId, read: false, timestamp: new Date().toISOString() }); this.save(); this.renderNotifications(); },
   checkDeadlineNotifications() {
+    if (!this.notifPrefs.deadlines) return;
     const tmr = new Date(); tmr.setDate(tmr.getDate()+1); const tmrStr = tmr.toISOString().split('T')[0];
     this.tasks.forEach(t => { if (t.dueDate === tmrStr && t.status !== 'done' && !this.notifications.some(n => n.type==='deadline' && n.taskId===t.id)) this.addNotification('deadline',`Deadline approaching in 24h: "${t.title}"`,t.id); });
+  },
+  setNotifPref(key, value) {
+    this.notifPrefs[key] = value;
+    this.save();
+  },
+  renderNotifPrefs() {
+    const p = this.notifPrefs;
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+    set('notif-deadline', p.deadlines);
+    set('notif-assign',   p.assignments);
+    set('notif-comments', p.comments);
+    set('notif-email',    p.email);
   },
 
   // ===== TASK CRUD =====
@@ -1784,13 +1813,13 @@ export const useAppStore = defineStore('app', {
     this.toastUndo('Task deleted: ' + taskName, () => this.undo());
   },
 
-  deleteCurrentTask() {
+  async deleteCurrentTask() {
     if (!this.currentTaskId) return;
     if (!this.canDeleteTask(this.currentTaskId)) {
       this.toast('You do not have permission to delete this task', 'error');
       return;
     }
-    if (!confirm('Delete this task and all its subtasks? This action can be undone.')) return;
+    if (!await this.confirm('Delete this task and all its subtasks?', 'Delete task', 'Delete')) return;
     this.deleteTask(this.currentTaskId); this.closeTaskPanel(); this.toast('Task deleted', 'success');
   },
 
@@ -2361,9 +2390,9 @@ export const useAppStore = defineStore('app', {
     this.toast(this.editingProjectId ? 'Project updated' : 'Project created', 'success');
   },
 
-  deleteProject(id) {
+  async deleteProject(id) {
     if (!this.canManageProject()) { this.toast('You do not have permission to manage projects', 'error'); return; }
-    if (!confirm('Delete this project?')) return;
+    if (!await this.confirm('Delete this project? Tasks will be unassigned from it.', 'Delete project', 'Delete')) return;
     this.projects = this.projects.filter(p => p.id !== id);
     this.tasks.forEach(t => { if (t.projectId === id) t.projectId = ''; });
     this.save(); this.render(); this.toast('Project deleted', 'success');
@@ -2800,6 +2829,27 @@ export const useAppStore = defineStore('app', {
     }
   },
 
+  // ===== CONFIRMATION MODAL (replaces confirm()) =====
+  // Usage: if (await this.confirm('Delete this item?')) { ... }
+  confirm(message, title = 'Are you sure?', okLabel = 'Confirm', okClass = 'btn-danger') {
+    return new Promise(resolve => {
+      this._confirmResolve = (result) => {
+        document.getElementById('confirm-modal-overlay')?.classList.remove('show');
+        this._confirmResolve = null;
+        resolve(result);
+      };
+      const overlay = document.getElementById('confirm-modal-overlay');
+      if (!overlay) { resolve(window.confirm(message)); return; } // graceful fallback
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-message').textContent = message;
+      const okBtn = document.getElementById('confirm-modal-ok');
+      okBtn.textContent = okLabel;
+      okBtn.className = `${okClass}`;
+      overlay.classList.add('show');
+    });
+  },
+  _confirmResolve: null,
+
   showTempPwModal(email, password) {
     this._tempPwEmail = email;
     this._tempPwPassword = password;
@@ -2820,7 +2870,7 @@ export const useAppStore = defineStore('app', {
 
   async deleteUser(id) {
     if (this.users.length <= 1) { this.toast('Cannot remove last member', 'error'); return; }
-    if (!confirm('Remove this member?')) return;
+    if (!await this.confirm('Remove this member? Their tasks will be unassigned.', 'Remove member', 'Remove')) return;
     try {
       await pb.collection('users').delete(id);
     } catch(e) {
@@ -3063,8 +3113,8 @@ export const useAppStore = defineStore('app', {
     this.toast(`Assigned to ${user.name}`,'success');
   },
 
-  bulkDelete() {
-    if (!confirm(`Delete ${this.selectedTasks.length} tasks?`)) return;
+  async bulkDelete() {
+    if (!await this.confirm(`Delete ${this.selectedTasks.length} selected tasks and their subtasks?`, 'Delete tasks', 'Delete')) return;
     this.pushUndo('Bulk delete');
     // Also delete descendants of selected tasks
     const toDelete = [...this.selectedTasks];
@@ -3926,12 +3976,12 @@ export const useAppStore = defineStore('app', {
     this.populateStatusSelects();
   },
 
-  removeBoardColumn(id) {
+  async removeBoardColumn(id) {
     if (this.boardColumns.length <= 1) { this.toast('Cannot remove last column', 'error'); return; }
     // Check if tasks exist with this status
     const tasksInCol = this.tasks.filter(t => t.status === id);
     if (tasksInCol.length > 0) {
-      if (!confirm(`${tasksInCol.length} task(s) have this status. Move them to the first column?`)) return;
+      if (!await this.confirm(`${tasksInCol.length} task(s) use this status. Move them to the first column?`, 'Remove column', 'Move & remove')) return;
       const firstCol = this.boardColumns.find(c => c.id !== id);
       tasksInCol.forEach(t => t.status = firstCol.id);
       this.save();

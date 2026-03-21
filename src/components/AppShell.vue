@@ -141,19 +141,19 @@
               <div class="notif-content hidden" id="notif-settings">
                 <div class="notif-setting">
                   <div><p class="notif-setting-title">Deadline reminders</p><p class="notif-setting-desc">Get notified 24h before deadlines</p></div>
-                  <label class="toggle"><input type="checkbox" checked id="notif-deadline"><span class="toggle-slider"></span></label>
+                  <label class="toggle"><input type="checkbox" id="notif-deadline" onchange="app.setNotifPref('deadlines', this.checked)"><span class="toggle-slider"></span></label>
                 </div>
                 <div class="notif-setting">
                   <div><p class="notif-setting-title">Task assignments</p><p class="notif-setting-desc">When a task is assigned to you</p></div>
-                  <label class="toggle"><input type="checkbox" checked id="notif-assign"><span class="toggle-slider"></span></label>
+                  <label class="toggle"><input type="checkbox" id="notif-assign" onchange="app.setNotifPref('assignments', this.checked)"><span class="toggle-slider"></span></label>
                 </div>
                 <div class="notif-setting">
                   <div><p class="notif-setting-title">Comments</p><p class="notif-setting-desc">New comments on your tasks</p></div>
-                  <label class="toggle"><input type="checkbox" checked id="notif-comments"><span class="toggle-slider"></span></label>
+                  <label class="toggle"><input type="checkbox" id="notif-comments" onchange="app.setNotifPref('comments', this.checked)"><span class="toggle-slider"></span></label>
                 </div>
                 <div class="notif-setting">
                   <div><p class="notif-setting-title">Email notifications</p><p class="notif-setting-desc">Send digest emails daily</p></div>
-                  <label class="toggle"><input type="checkbox" id="notif-email"><span class="toggle-slider"></span></label>
+                  <label class="toggle"><input type="checkbox" id="notif-email" onchange="app.setNotifPref('email', this.checked)"><span class="toggle-slider"></span></label>
                 </div>
               </div>
             </div>
@@ -754,6 +754,22 @@
         <div class="modal-footer">
           <button class="btn-secondary" onclick="app.closeChangePwModal()">Cancel</button>
           <button class="btn-primary" onclick="app.submitChangePassword()">Update Password</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmation Modal (reusable, replaces all confirm() dialogs) -->
+    <div class="modal-overlay" id="confirm-modal-overlay">
+      <div class="modal modal-sm" id="confirm-modal">
+        <div class="modal-header">
+          <h3 id="confirm-modal-title">Are you sure?</h3>
+        </div>
+        <div class="modal-body">
+          <p id="confirm-modal-message" style="margin:0;color:var(--text-light);font-size:14px"></p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="app._confirmResolve(false)">Cancel</button>
+          <button id="confirm-modal-ok" class="btn-danger" onclick="app._confirmResolve(true)">Confirm</button>
         </div>
       </div>
     </div>
