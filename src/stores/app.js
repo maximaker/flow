@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { nextTick } from 'vue'
 import { pb } from '../pb.js'
 
 export const useAppStore = defineStore('app', {
@@ -73,8 +74,11 @@ export const useAppStore = defineStore('app', {
     // Use PocketBase-loaded templates if available, otherwise fall back to localStorage
     if (this._pbTemplates) { this.templates = this._pbTemplates; } else { this.loadTemplates(); }
     this.applyTheme();
-    // bindEvents is called in AppShell onMounted so DOM is ready
     this.checkDeadlineNotifications();
+    // AppShell renders only after appStarted = true flips Vue's v-else.
+    // Wait for Vue's next DOM update cycle before calling render(),
+    // otherwise getElementById calls inside render() return null.
+    await nextTick();
     this.render();
     this.updateFaviconBadge();
   },
@@ -200,6 +204,9 @@ export const useAppStore = defineStore('app', {
         this.labels = JSON.parse(localStorage.getItem('fb_labels') || '[]');
         this.theme = localStorage.getItem('fb_theme') || 'light';
       } catch { this.users = []; this.projects = []; this.tasks = []; this.notifications = []; this.labels = []; }
+      // Treat localStorage data as the baseline so the sync timer doesn't
+      // attempt to re-create records that already exist in PocketBase.
+      this._pbSnapshot = this._snapshot();
     }
   },
 
