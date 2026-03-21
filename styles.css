@@ -649,6 +649,8 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; back
 .dep-item { padding: 8px 10px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; gap: 6px; }
 .dep-item.blocked { background: rgba(196,80,80,0.06); color: var(--danger); border: 1px solid rgba(196,80,80,0.15); }
 .dep-item.blocking { background: rgba(196,153,58,0.06); color: var(--progress); border: 1px solid rgba(196,153,58,0.15); }
+/* Multi-select for Blocked by — show up to ~4 options, scroll for the rest */
+#panel-blocked-by, #panel-blocked-visible { max-height: 84px; padding: 4px; }
 
 /* ===== Subtasks ===== */
 .subtask-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }

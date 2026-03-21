@@ -504,7 +504,7 @@
               <option value="xl">3-5 days</option>
               <option value="epic">1+ week</option>
             </select>
-            <select id="panel-blocked-by"><option value="">None</option></select>
+            <select id="panel-blocked-by" multiple></select>
             <div class="label-picker" id="panel-labels"></div>
           </div>
 
@@ -558,7 +558,7 @@
                 <option value="xl">3-5 days</option><option value="epic">1+ week</option>
               </select></div>
               <div class="meta-row"><label>Labels</label><div class="label-picker" id="panel-labels-visible"></div></div>
-              <div class="meta-row"><label>Blocked by</label><select id="panel-blocked-visible" class="meta-select" onchange="app.syncMoreField('blocked')"><option value="">None</option></select></div>
+              <div class="meta-row"><label>Blocked by</label><select id="panel-blocked-visible" class="meta-select" multiple onchange="app.syncMoreField('blocked')"></select></div>
               <div class="panel-section hidden" id="panel-deps-section">
                 <h4>Dependencies</h4><div id="panel-deps-info" class="deps-info"></div>
               </div>

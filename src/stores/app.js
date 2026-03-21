@@ -200,7 +200,9 @@ export const useAppStore = defineStore('app', {
       this.tasks = tasks.map(r => ({
         id: r.id, title: r.title, description: r.description || '', status: r.status || 'todo',
         projectId: r.projectId || '', assigneeId: r.assigneeId || '', dueDate: r.dueDate || '',
-        priority: r.priority || '', labelIds: r.labelIds || [], blockedBy: r.blockedBy || '',
+        priority: r.priority || '', labelIds: r.labelIds || [],
+        // Migrate legacy string to array (blockedBy used to be a single task ID)
+        blockedBy: Array.isArray(r.blockedBy) ? r.blockedBy : (r.blockedBy ? [r.blockedBy] : []),
         order: r.order || 0, parentId: r.parentId || '', effort: r.effort || '',
         deliverables: r.deliverables || [], attachments: r.attachments || [],
         comments: r.comments || [], activityLog: r.activityLog || [],
@@ -245,7 +247,7 @@ export const useAppStore = defineStore('app', {
             newTasks.push({
               id: st.id, title: st.title, description: '', status: st.done ? 'done' : (t.status === 'done' ? 'done' : 'todo'),
               projectId: t.projectId || '', assigneeId: t.assigneeId || '', dueDate: '', priority: '',
-              labelIds: [], blockedBy: '', order: i, parentId: t.id,
+              labelIds: [], blockedBy: [], order: i, parentId: t.id,
               attachments: [], comments: [], activityLog: [],
               createdAt: t.createdAt || new Date().toISOString().split('T')[0],
             });
@@ -391,7 +393,8 @@ export const useAppStore = defineStore('app', {
         map: r => ({
           id: r.id, title: r.title, description: r.description || '', status: r.status || 'todo',
           projectId: r.projectId || '', assigneeId: r.assigneeId || '', dueDate: r.dueDate || '',
-          priority: r.priority || '', labelIds: r.labelIds || [], blockedBy: r.blockedBy || '',
+          priority: r.priority || '', labelIds: r.labelIds || [],
+          blockedBy: Array.isArray(r.blockedBy) ? r.blockedBy : (r.blockedBy ? [r.blockedBy] : []),
           order: r.order || 0, parentId: r.parentId || '', effort: r.effort || '',
           deliverables: r.deliverables || [], attachments: r.attachments || [],
           comments: r.comments || [], activityLog: r.activityLog || [],
@@ -466,7 +469,7 @@ export const useAppStore = defineStore('app', {
     const d = (offset) => { const dt = new Date(today); dt.setDate(dt.getDate() + offset); return dt.toISOString().split('T')[0]; };
     const sub = (task, title, status, order, parent) => ({
       id: task, title, description: '', status, projectId: p1, assigneeId: u1,
-      dueDate: '', priority: '', labelIds: [], blockedBy: '', order, parentId: parent,
+      dueDate: '', priority: '', labelIds: [], blockedBy: [], order, parentId: parent,
       attachments: [], comments: [], activityLog: [], createdAt: d(-5),
     });
 
@@ -492,7 +495,7 @@ export const useAppStore = defineStore('app', {
     this.tasks = [
       { id: t1, title: 'Design homepage mockups', description: 'Create high-fidelity mockups for the new homepage layout',
         status: 'in-progress', projectId: p1, assigneeId: u1, dueDate: d(2), priority: 'p1', labelIds: [l3],
-        blockedBy: '', order: 0, parentId: '', effort: 'medium',
+        blockedBy: [], order: 0, parentId: '', effort: 'medium',
         deliverables: [{ id: this.generateId(), name: 'Homepage Mockup v1', url: 'https://figma.com/file/example', type: 'link' }],
         attachments: [{ id: this.generateId(), name: 'homepage-v1.fig', size: '2.4 MB', type: 'doc' }, { id: this.generateId(), name: 'brand-colors.png', size: '340 KB', type: 'img' }],
         comments: [
@@ -508,7 +511,7 @@ export const useAppStore = defineStore('app', {
 
       { id: t2, title: 'Implement authentication flow', description: 'Build login, signup, and password reset flows',
         status: 'todo', projectId: p1, assigneeId: u2, dueDate: d(5), priority: 'p0', labelIds: [l2, l5],
-        blockedBy: t1, order: 0, parentId: '', effort: 'large',
+        blockedBy: [t1], order: 0, parentId: '', effort: 'large',
         attachments: [], comments: [], activityLog: [], createdAt: d(-3) },
       { ...sub(st5, 'Login page',     'todo', 0, t2), projectId: p1, assigneeId: u2, createdAt: d(-3) },
       { ...sub(st6, 'Signup page',    'todo', 1, t2), projectId: p1, assigneeId: u2, createdAt: d(-3) },
@@ -516,7 +519,7 @@ export const useAppStore = defineStore('app', {
 
       { id: t3, title: 'Set up CI/CD pipeline', description: 'Configure GitHub Actions for automated testing and deployment',
         status: 'done', projectId: p1, assigneeId: u4, dueDate: d(-1), priority: 'p2', labelIds: [l5],
-        blockedBy: '', order: 0, parentId: '',
+        blockedBy: [], order: 0, parentId: '',
         attachments: [{ id: this.generateId(), name: 'pipeline-config.yml', size: '1.2 KB', type: 'doc' }],
         comments: [], activityLog: [], createdAt: d(-7) },
       { ...sub(st8, 'Configure test runner', 'done', 0, t3), projectId: p1, assigneeId: u4, createdAt: d(-7) },
@@ -524,7 +527,7 @@ export const useAppStore = defineStore('app', {
 
       { id: t4, title: 'User onboarding screens', description: 'Design and implement the onboarding flow for new users',
         status: 'in-progress', projectId: p2, assigneeId: u3, dueDate: d(1), priority: 'p1', labelIds: [l3, l2],
-        blockedBy: '', order: 1, parentId: '',
+        blockedBy: [], order: 1, parentId: '',
         attachments: [],
         comments: [{ id: this.generateId(), userId: u1, text: "Let's keep this under 4 screens max.", timestamp: new Date(today - 172800000).toISOString() }],
         activityLog: [], createdAt: d(-4) },
@@ -534,11 +537,11 @@ export const useAppStore = defineStore('app', {
 
       { id: t5, title: 'API endpoint documentation', description: 'Document all REST endpoints before migration',
         status: 'todo', projectId: p3, assigneeId: u2, dueDate: d(7), priority: 'p2', labelIds: [],
-        blockedBy: '', order: 1, parentId: '', attachments: [], comments: [], activityLog: [], createdAt: d(-2) },
+        blockedBy: [], order: 1, parentId: '', attachments: [], comments: [], activityLog: [], createdAt: d(-2) },
 
       { id: t6, title: 'Push notification service', description: 'Implement push notifications for iOS and Android',
         status: 'todo', projectId: p2, assigneeId: u4, dueDate: d(10), priority: 'p1', labelIds: [l2, l5],
-        blockedBy: t4, order: 2, parentId: '',
+        blockedBy: [t4], order: 2, parentId: '',
         attachments: [], comments: [], activityLog: [], createdAt: d(-1) },
       { ...sub(st13, 'iOS integration',    'todo', 0, t6), projectId: p2, assigneeId: u4, createdAt: d(-1) },
       { ...sub(st14, 'Android integration','todo', 1, t6), projectId: p2, assigneeId: u4, createdAt: d(-1) },
@@ -546,7 +549,7 @@ export const useAppStore = defineStore('app', {
 
       { id: t7, title: 'Database schema migration', description: 'Migrate from MySQL to PostgreSQL',
         status: 'in-progress', projectId: p3, assigneeId: u1, dueDate: d(3), priority: 'p0', labelIds: [l5, l4],
-        blockedBy: '', order: 2, parentId: '', effort: 'xl',
+        blockedBy: [], order: 2, parentId: '', effort: 'xl',
         attachments: [{ id: this.generateId(), name: 'migration-plan.pdf', size: '890 KB', type: 'pdf' }],
         comments: [], activityLog: [], createdAt: d(-6) },
       { ...sub(st16, 'Schema mapping',         'done', 0, t7), projectId: p3, assigneeId: u1, createdAt: d(-6) },
@@ -555,7 +558,7 @@ export const useAppStore = defineStore('app', {
 
       { id: t8, title: 'Performance audit', description: 'Run Lighthouse and optimize critical paths',
         status: 'done', projectId: p1, assigneeId: u3, dueDate: d(-3), priority: 'p3', labelIds: [],
-        blockedBy: '', order: 1, parentId: '',
+        blockedBy: [], order: 1, parentId: '',
         attachments: [], comments: [], activityLog: [], createdAt: d(-10) },
       { ...sub(st19, 'Run Lighthouse',     'done', 0, t8), projectId: p1, assigneeId: u3, createdAt: d(-10) },
       { ...sub(st20, 'Optimize images',    'done', 1, t8), projectId: p1, assigneeId: u3, createdAt: d(-10) },
@@ -812,12 +815,12 @@ export const useAppStore = defineStore('app', {
       el.innerHTML = '<option value="">Unassigned</option>' + this.users.map(u => `<option value="${u.id}">${this.esc(u.name)}</option>`).join('');
       el.value = val;
     });
-    // Blocked-by select
+    // Blocked-by multi-select (preserve current selection after repopulating)
     const blockedEl = document.getElementById('panel-blocked-by');
     if (blockedEl) {
-      const val = blockedEl.value;
-      blockedEl.innerHTML = '<option value="">None</option>' + this.tasks.filter(t => t.id !== this.currentTaskId).map(t => `<option value="${t.id}">${this.esc(t.title)}</option>`).join('');
-      blockedEl.value = val;
+      const selectedIds = Array.from(blockedEl.selectedOptions).map(o => o.value);
+      blockedEl.innerHTML = this.tasks.filter(t => t.id !== this.currentTaskId).map(t => `<option value="${t.id}">${this.esc(t.title)}</option>`).join('');
+      this._setMultiSelect('panel-blocked-by', selectedIds);
     }
     // Label filter
     const labelFilter = document.getElementById('filter-label');
@@ -911,18 +914,20 @@ export const useAppStore = defineStore('app', {
 
   // ===== DEPENDENCY HELPERS =====
   isBlocked(task) {
-    if (!task.blockedBy) return false;
-    const blocker = this.tasks.find(t => t.id === task.blockedBy);
-    return blocker && blocker.status !== 'done';
+    if (!task.blockedBy?.length) return false;
+    return task.blockedBy.some(id => {
+      const blocker = this.tasks.find(t => t.id === id);
+      return blocker && blocker.status !== 'done';
+    });
   },
 
   getBlockedBy(task) {
-    if (!task.blockedBy) return null;
-    return this.tasks.find(t => t.id === task.blockedBy);
+    if (!task.blockedBy?.length) return [];
+    return task.blockedBy.map(id => this.tasks.find(t => t.id === id)).filter(Boolean);
   },
 
   getBlocking(taskId) {
-    return this.tasks.filter(t => t.blockedBy === taskId);
+    return this.tasks.filter(t => t.blockedBy?.includes(taskId));
   },
 
   // ===== HOME =====
@@ -1832,7 +1837,7 @@ export const useAppStore = defineStore('app', {
       priority: document.getElementById('modal-task-priority').value,
       effort: document.getElementById('modal-task-effort').value,
       labelIds: this.getSelectedLabels('modal-task-labels'),
-      blockedBy: '', order: this.tasks.filter(t => t.status === (existingTask?.status || 'todo')).length,
+      blockedBy: [], order: this.tasks.filter(t => t.status === (existingTask?.status || 'todo')).length,
       parentId: existingTask?.parentId || '',
       deliverables: [], attachments: [], comments: [], activityLog: [{ text: 'Task created', timestamp: new Date().toISOString() }],
       createdAt: new Date().toISOString().split('T')[0],
@@ -1850,7 +1855,7 @@ export const useAppStore = defineStore('app', {
         this.tasks.push({
           id: this.generateId(), title: st, description: '',
           status: 'todo', projectId: task.projectId, assigneeId: task.assigneeId || '',
-          dueDate: '', priority: '', labelIds: [], blockedBy: '',
+          dueDate: '', priority: '', labelIds: [], blockedBy: [],
           order: i, parentId: task.id,
           attachments: [], comments: [],
           activityLog: [{ text: 'Subtask created from template', timestamp: new Date().toISOString() }],
@@ -1909,7 +1914,7 @@ export const useAppStore = defineStore('app', {
     };
     addDescendants(taskId);
     this.tasks = this.tasks.filter(t => !toDelete.has(t.id));
-    this.tasks.forEach(t => { if (toDelete.has(t.blockedBy)) t.blockedBy = ''; });
+    this.tasks.forEach(t => { if (t.blockedBy?.length) t.blockedBy = t.blockedBy.filter(id => !toDelete.has(id)); });
     this.save(); this.render();
     this.toastUndo('Task deleted: ' + taskName, () => this.undo());
   },
@@ -1955,10 +1960,10 @@ export const useAppStore = defineStore('app', {
     document.getElementById('panel-description').value = task.description || '';
     document.getElementById('panel-priority').value = task.priority || '';
     document.getElementById('panel-effort').value = task.effort || '';
-    document.getElementById('panel-blocked-by').value = task.blockedBy || '';
+    this._setMultiSelect('panel-blocked-by', task.blockedBy || []);
 
     this.populateSelects();
-    document.getElementById('panel-blocked-by').value = task.blockedBy || '';
+    this._setMultiSelect('panel-blocked-by', task.blockedBy || []);
 
     const statusColors = { todo: 'var(--todo)', 'in-progress': 'var(--progress)', done: 'var(--done)' };
     const colObj = this.boardColumns.find(c => c.id === task.status);
@@ -1986,7 +1991,7 @@ export const useAppStore = defineStore('app', {
     const blockedVisEl = document.getElementById('panel-blocked-visible');
     const blockedHiddenEl = document.getElementById('panel-blocked-by');
     blockedVisEl.innerHTML = blockedHiddenEl.innerHTML;
-    blockedVisEl.value = task.blockedBy || '';
+    this._setMultiSelect('panel-blocked-visible', task.blockedBy || []);
 
     document.getElementById('task-overlay').classList.add('show');
     document.getElementById('task-panel').classList.add('open');
@@ -2018,7 +2023,7 @@ export const useAppStore = defineStore('app', {
     task.description = document.getElementById('panel-description').value;
     task.priority = document.getElementById('panel-priority').value;
     task.effort = document.getElementById('panel-effort').value;
-    task.blockedBy = document.getElementById('panel-blocked-by').value;
+    task.blockedBy = Array.from(document.getElementById('panel-blocked-by').selectedOptions).map(o => o.value).filter(Boolean);
     task.labelIds = this.getSelectedLabels('panel-labels');
     // parentId is preserved — not editable from panel
 
@@ -2050,13 +2055,13 @@ export const useAppStore = defineStore('app', {
   renderDepsInfo(task) {
     const sec = document.getElementById('panel-deps-section');
     const info = document.getElementById('panel-deps-info');
-    const blockedBy = this.getBlockedBy(task);
+    const blockedByTasks = this.getBlockedBy(task);
     const blocking = this.getBlocking(task.id);
 
-    if (!blockedBy && !blocking.length) { sec.classList.add('hidden'); return; }
+    if (!blockedByTasks.length && !blocking.length) { sec.classList.add('hidden'); return; }
     sec.classList.remove('hidden');
     let html = '';
-    if (blockedBy) html += `<div class="dep-item blocked"><span class="dep-icon">&#128683;</span> Blocked by: <strong>${this.esc(blockedBy.title)}</strong> (${blockedBy.status})</div>`;
+    blockedByTasks.forEach(b => { html += `<div class="dep-item blocked"><span class="dep-icon">&#128683;</span> Blocked by: <strong>${this.esc(b.title)}</strong> (${b.status})</div>`; });
     blocking.forEach(t => { html += `<div class="dep-item blocking"><span class="dep-icon">&#9888;</span> Blocking: <strong>${this.esc(t.title)}</strong></div>`; });
     info.innerHTML = html;
   },
@@ -2177,7 +2182,7 @@ export const useAppStore = defineStore('app', {
     const newTask = {
       id: this.generateId(), title: 'New subtask', description: '',
       status: 'todo', projectId: task.projectId, assigneeId: task.assigneeId || '',
-      dueDate: '', priority: '', labelIds: [], blockedBy: '',
+      dueDate: '', priority: '', labelIds: [], blockedBy: [],
       order: children.length, parentId: task.id,
       attachments: [], comments: [],
       activityLog: [{ text: 'Subtask created', timestamp: new Date().toISOString() }],
@@ -2231,7 +2236,7 @@ export const useAppStore = defineStore('app', {
     addDescendants(stId);
     this.tasks = this.tasks.filter(t => !toDelete.has(t.id));
     // Clean up blockedBy references
-    this.tasks.forEach(t => { if (toDelete.has(t.blockedBy)) t.blockedBy = ''; });
+    this.tasks.forEach(t => { if (t.blockedBy?.length) t.blockedBy = t.blockedBy.filter(id => !toDelete.has(id)); });
     this.save();
     if (this.currentTaskId) {
       const currentTask = this.tasks.find(t => t.id === this.currentTaskId);
@@ -2534,9 +2539,11 @@ export const useAppStore = defineStore('app', {
       document.getElementById('panel-effort').value = val;
       task.effort = val;
     } else if (type === 'blocked') {
-      const val = document.getElementById('panel-blocked-visible').value;
-      document.getElementById('panel-blocked-by').value = val;
-      task.blockedBy = val;
+      const visEl = document.getElementById('panel-blocked-visible');
+      const hidEl = document.getElementById('panel-blocked-by');
+      // Mirror selection from visible multi-select to hidden one
+      Array.from(hidEl.options).forEach((o, i) => { o.selected = visEl.options[i]?.selected || false; });
+      task.blockedBy = Array.from(hidEl.selectedOptions).map(o => o.value).filter(Boolean);
     }
     this.save(); this.render();
     const indicator = document.getElementById('panel-saved-indicator');
@@ -3091,7 +3098,7 @@ export const useAppStore = defineStore('app', {
 
     this.tasks.push({
       id: this.generateId(), title, description: '', status: 'todo', projectId, assigneeId, dueDate, priority,
-      labelIds, blockedBy: '', order: this.tasks.filter(t => t.status === 'todo').length,
+      labelIds, blockedBy: [], order: this.tasks.filter(t => t.status === 'todo').length,
       parentId: '', deliverables: [], attachments: [], comments: [],
       activityLog: [{ text: 'Task created via quick add', timestamp: new Date().toISOString() }],
       createdAt: new Date().toISOString().split('T')[0]
@@ -3159,7 +3166,7 @@ export const useAppStore = defineStore('app', {
         id: this.generateId(),
         title: item.title, description: '', status: 'todo',
         projectId, assigneeId: '', dueDate: '', priority: '',
-        labelIds: [], blockedBy: '', order: siblings.length,
+        labelIds: [], blockedBy: [], order: siblings.length,
         parentId, attachments: [], comments: [],
         activityLog: [{ text: 'Created via bulk import', timestamp: new Date().toISOString() }],
         createdAt: new Date().toISOString().split('T')[0],
@@ -3224,7 +3231,7 @@ export const useAppStore = defineStore('app', {
     };
     this.selectedTasks.forEach(id => addDescendants(id));
     this.tasks = this.tasks.filter(t => !toDelete.has(t.id));
-    this.tasks.forEach(t => { if (toDelete.has(t.blockedBy)) t.blockedBy = ''; });
+    this.tasks.forEach(t => { if (t.blockedBy?.length) t.blockedBy = t.blockedBy.filter(id => !toDelete.has(id)); });
     this.clearSelection(); this.render(); this.save();
     this.toastUndo('Tasks deleted', () => this.undo());
   },
@@ -3357,6 +3364,12 @@ export const useAppStore = defineStore('app', {
 
   // ===== UTILITIES =====
   esc(str) { const d = document.createElement('div'); d.textContent = str||''; return d.innerHTML; },
+  // Helper: set selected options on a <select multiple> element by an array of values
+  _setMultiSelect(elementId, values) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    Array.from(el.options).forEach(o => { o.selected = (values || []).includes(o.value); });
+  },
   // Sanitise user-defined colour values before injecting into style= attributes.
   // Accepts #rrggbb, #rgb, rgb(...), rgba(...) — returns fallback for anything else.
   safeColor(c, fallback = '#7a7a7a') {
