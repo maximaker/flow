@@ -360,111 +360,131 @@ export const useAppStore = defineStore('app', {
 
   // ===== SEED DATA =====
   seedData() {
-    this.users = [
-      { id: 'u1', name: 'Sarah Chen', email: 'sarah@flow.io', role: 'admin', color: '#7a7a7a' },
-      { id: 'u2', name: 'Marcus Johnson', email: 'marcus@flow.io', role: 'user', color: '#8a9a7a' },
-      { id: 'u3', name: 'Emily Rodriguez', email: 'emily@flow.io', role: 'user', color: '#b08a7a' },
-      { id: 'u4', name: 'Alex Kim', email: 'alex@flow.io', role: 'collaborator', color: '#9a8a6a' },
-    ];
-    this.projects = [
-      { id: 'p1', name: 'Website Redesign', color: '#7a7a7a', description: 'Complete overhaul of the marketing website' },
-      { id: 'p2', name: 'Mobile App v2', color: '#8a9a7a', description: 'Version 2 of the mobile application' },
-      { id: 'p3', name: 'API Migration', color: '#c4993a', description: 'Migrate REST API to GraphQL' },
-    ];
-    this.labels = [
-      { id: 'l1', name: 'Bug', color: '#b87a6a' },
-      { id: 'l2', name: 'Feature', color: '#7a96a8' },
-      { id: 'l3', name: 'Design', color: '#a08a9a' },
-      { id: 'l4', name: 'Urgent', color: '#c09a5a' },
-      { id: 'l5', name: 'Backend', color: '#7a9e7a' },
-    ];
+    // Generate all IDs upfront so cross-references stay consistent
+    const ids = {};
+    const g = (key) => { ids[key] = this.generateId(); return ids[key]; };
+    // users
+    const u1=g('u1'), u2=g('u2'), u3=g('u3'), u4=g('u4');
+    // projects
+    const p1=g('p1'), p2=g('p2'), p3=g('p3');
+    // labels
+    const l1=g('l1'), l2=g('l2'), l3=g('l3'), l4=g('l4'), l5=g('l5');
+    // tasks
+    const t1=g('t1'), t2=g('t2'), t3=g('t3'), t4=g('t4'),
+          t5=g('t5'), t6=g('t6'), t7=g('t7'), t8=g('t8');
+    // subtasks
+    const st1=g('st1'),st2=g('st2'),st3=g('st3'),st4=g('st4'),
+          st5=g('st5'),st6=g('st6'),st7=g('st7'),
+          st8=g('st8'),st9=g('st9'),
+          st10=g('st10'),st11=g('st11'),st12=g('st12'),
+          st13=g('st13'),st14=g('st14'),st15=g('st15'),
+          st16=g('st16'),st17=g('st17'),st18=g('st18'),
+          st19=g('st19'),st20=g('st20'),st21=g('st21');
 
     const today = new Date();
     const d = (offset) => { const dt = new Date(today); dt.setDate(dt.getDate() + offset); return dt.toISOString().split('T')[0]; };
+    const sub = (task, title, status, order, parent) => ({
+      id: task, title, description: '', status, projectId: p1, assigneeId: u1,
+      dueDate: '', priority: '', labelIds: [], blockedBy: '', order, parentId: parent,
+      attachments: [], comments: [], activityLog: [], createdAt: d(-5),
+    });
+
+    this.users = [
+      { id: u1, name: 'Sarah Chen',      email: 'sarah@flow.io',  role: 'admin',        color: '#7a7a7a' },
+      { id: u2, name: 'Marcus Johnson',  email: 'marcus@flow.io', role: 'user',         color: '#8a9a7a' },
+      { id: u3, name: 'Emily Rodriguez', email: 'emily@flow.io',  role: 'user',         color: '#b08a7a' },
+      { id: u4, name: 'Alex Kim',        email: 'alex@flow.io',   role: 'collaborator', color: '#9a8a6a' },
+    ];
+    this.projects = [
+      { id: p1, name: 'Website Redesign', color: '#7a7a7a', description: 'Complete overhaul of the marketing website' },
+      { id: p2, name: 'Mobile App v2',    color: '#8a9a7a', description: 'Version 2 of the mobile application' },
+      { id: p3, name: 'API Migration',    color: '#c4993a', description: 'Migrate REST API to GraphQL' },
+    ];
+    this.labels = [
+      { id: l1, name: 'Bug',     color: '#b87a6a' },
+      { id: l2, name: 'Feature', color: '#7a96a8' },
+      { id: l3, name: 'Design',  color: '#a08a9a' },
+      { id: l4, name: 'Urgent',  color: '#c09a5a' },
+      { id: l5, name: 'Backend', color: '#7a9e7a' },
+    ];
 
     this.tasks = [
-      { id: 't1', title: 'Design homepage mockups', description: 'Create high-fidelity mockups for the new homepage layout',
-        status: 'in-progress', projectId: 'p1', assigneeId: 'u1', dueDate: d(2), priority: 'p1', labelIds: ['l3'],
+      { id: t1, title: 'Design homepage mockups', description: 'Create high-fidelity mockups for the new homepage layout',
+        status: 'in-progress', projectId: p1, assigneeId: u1, dueDate: d(2), priority: 'p1', labelIds: [l3],
         blockedBy: '', order: 0, parentId: '', effort: 'medium',
-        deliverables: [{id:'d1', name:'Homepage Mockup v1', url:'https://figma.com/file/example', type:'link'}],
-        attachments: [ { id: 'a1', name: 'homepage-v1.fig', size: '2.4 MB', type: 'doc' }, { id: 'a2', name: 'brand-colors.png', size: '340 KB', type: 'img' } ],
+        deliverables: [{ id: this.generateId(), name: 'Homepage Mockup v1', url: 'https://figma.com/file/example', type: 'link' }],
+        attachments: [{ id: this.generateId(), name: 'homepage-v1.fig', size: '2.4 MB', type: 'doc' }, { id: this.generateId(), name: 'brand-colors.png', size: '340 KB', type: 'img' }],
         comments: [
-          { id: 'c1', userId: 'u2', text: 'Looking great! Can we explore a darker variant too?', timestamp: new Date(today - 86400000).toISOString() },
-          { id: 'c2', userId: 'u1', text: "Sure, I'll add a dark mode mockup by tomorrow.", timestamp: new Date(today - 43200000).toISOString() },
+          { id: this.generateId(), userId: u2, text: 'Looking great! Can we explore a darker variant too?', timestamp: new Date(today - 86400000).toISOString() },
+          { id: this.generateId(), userId: u1, text: "Sure, I'll add a dark mode mockup by tomorrow.", timestamp: new Date(today - 43200000).toISOString() },
         ],
         activityLog: [{ text: 'Task created', timestamp: d(-5) }, { text: 'Status changed to In Progress', timestamp: d(-3) }],
         createdAt: d(-5) },
-      // Subtasks of t1
-      { id: 'st1', title: 'Wireframe layout', description: '', status: 'done', projectId: 'p1', assigneeId: 'u1', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 0, parentId: 't1', attachments: [], comments: [], activityLog: [], createdAt: d(-5) },
-      { id: 'st2', title: 'Color palette selection', description: '', status: 'done', projectId: 'p1', assigneeId: 'u1', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 1, parentId: 't1', attachments: [], comments: [], activityLog: [], createdAt: d(-5) },
-      { id: 'st3', title: 'High-fidelity design', description: '', status: 'in-progress', projectId: 'p1', assigneeId: 'u1', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 2, parentId: 't1', attachments: [], comments: [], activityLog: [], createdAt: d(-5) },
-      { id: 'st4', title: 'Responsive variants', description: '', status: 'todo', projectId: 'p1', assigneeId: 'u1', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 3, parentId: 't1', attachments: [], comments: [], activityLog: [], createdAt: d(-5) },
+      { ...sub(st1, 'Wireframe layout',        'done',        0, t1), assigneeId: u1 },
+      { ...sub(st2, 'Color palette selection', 'done',        1, t1), assigneeId: u1 },
+      { ...sub(st3, 'High-fidelity design',    'in-progress', 2, t1), assigneeId: u1 },
+      { ...sub(st4, 'Responsive variants',     'todo',        3, t1), assigneeId: u1 },
 
-      { id: 't2', title: 'Implement authentication flow', description: 'Build login, signup, and password reset flows',
-        status: 'todo', projectId: 'p1', assigneeId: 'u2', dueDate: d(5), priority: 'p0', labelIds: ['l2', 'l5'],
-        blockedBy: 't1', order: 0, parentId: '', effort: 'large',
+      { id: t2, title: 'Implement authentication flow', description: 'Build login, signup, and password reset flows',
+        status: 'todo', projectId: p1, assigneeId: u2, dueDate: d(5), priority: 'p0', labelIds: [l2, l5],
+        blockedBy: t1, order: 0, parentId: '', effort: 'large',
         attachments: [], comments: [], activityLog: [], createdAt: d(-3) },
-      // Subtasks of t2
-      { id: 'st5', title: 'Login page', description: '', status: 'todo', projectId: 'p1', assigneeId: 'u2', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 0, parentId: 't2', attachments: [], comments: [], activityLog: [], createdAt: d(-3) },
-      { id: 'st6', title: 'Signup page', description: '', status: 'todo', projectId: 'p1', assigneeId: 'u2', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 1, parentId: 't2', attachments: [], comments: [], activityLog: [], createdAt: d(-3) },
-      { id: 'st7', title: 'Password reset', description: '', status: 'todo', projectId: 'p1', assigneeId: 'u2', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 2, parentId: 't2', attachments: [], comments: [], activityLog: [], createdAt: d(-3) },
+      { ...sub(st5, 'Login page',     'todo', 0, t2), projectId: p1, assigneeId: u2, createdAt: d(-3) },
+      { ...sub(st6, 'Signup page',    'todo', 1, t2), projectId: p1, assigneeId: u2, createdAt: d(-3) },
+      { ...sub(st7, 'Password reset', 'todo', 2, t2), projectId: p1, assigneeId: u2, createdAt: d(-3) },
 
-      { id: 't3', title: 'Set up CI/CD pipeline', description: 'Configure GitHub Actions for automated testing and deployment',
-        status: 'done', projectId: 'p1', assigneeId: 'u4', dueDate: d(-1), priority: 'p2', labelIds: ['l5'],
+      { id: t3, title: 'Set up CI/CD pipeline', description: 'Configure GitHub Actions for automated testing and deployment',
+        status: 'done', projectId: p1, assigneeId: u4, dueDate: d(-1), priority: 'p2', labelIds: [l5],
         blockedBy: '', order: 0, parentId: '',
-        attachments: [{ id: 'a3', name: 'pipeline-config.yml', size: '1.2 KB', type: 'doc' }],
+        attachments: [{ id: this.generateId(), name: 'pipeline-config.yml', size: '1.2 KB', type: 'doc' }],
         comments: [], activityLog: [], createdAt: d(-7) },
-      // Subtasks of t3
-      { id: 'st8', title: 'Configure test runner', description: '', status: 'done', projectId: 'p1', assigneeId: 'u4', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 0, parentId: 't3', attachments: [], comments: [], activityLog: [], createdAt: d(-7) },
-      { id: 'st9', title: 'Set up staging deploy', description: '', status: 'done', projectId: 'p1', assigneeId: 'u4', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 1, parentId: 't3', attachments: [], comments: [], activityLog: [], createdAt: d(-7) },
+      { ...sub(st8, 'Configure test runner', 'done', 0, t3), projectId: p1, assigneeId: u4, createdAt: d(-7) },
+      { ...sub(st9, 'Set up staging deploy', 'done', 1, t3), projectId: p1, assigneeId: u4, createdAt: d(-7) },
 
-      { id: 't4', title: 'User onboarding screens', description: 'Design and implement the onboarding flow for new users',
-        status: 'in-progress', projectId: 'p2', assigneeId: 'u3', dueDate: d(1), priority: 'p1', labelIds: ['l3', 'l2'],
+      { id: t4, title: 'User onboarding screens', description: 'Design and implement the onboarding flow for new users',
+        status: 'in-progress', projectId: p2, assigneeId: u3, dueDate: d(1), priority: 'p1', labelIds: [l3, l2],
         blockedBy: '', order: 1, parentId: '',
-        attachments: [], comments: [ { id: 'c3', userId: 'u1', text: "Let's keep this under 4 screens max.", timestamp: new Date(today - 172800000).toISOString() } ],
+        attachments: [],
+        comments: [{ id: this.generateId(), userId: u1, text: "Let's keep this under 4 screens max.", timestamp: new Date(today - 172800000).toISOString() }],
         activityLog: [], createdAt: d(-4) },
-      // Subtasks of t4
-      { id: 'st10', title: 'Welcome screen', description: '', status: 'done', projectId: 'p2', assigneeId: 'u3', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 0, parentId: 't4', attachments: [], comments: [], activityLog: [], createdAt: d(-4) },
-      { id: 'st11', title: 'Feature tour', description: '', status: 'todo', projectId: 'p2', assigneeId: 'u3', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 1, parentId: 't4', attachments: [], comments: [], activityLog: [], createdAt: d(-4) },
-      { id: 'st12', title: 'Permission requests', description: '', status: 'todo', projectId: 'p2', assigneeId: 'u3', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 2, parentId: 't4', attachments: [], comments: [], activityLog: [], createdAt: d(-4) },
+      { ...sub(st10, 'Welcome screen',      'done', 0, t4), projectId: p2, assigneeId: u3, createdAt: d(-4) },
+      { ...sub(st11, 'Feature tour',        'todo', 1, t4), projectId: p2, assigneeId: u3, createdAt: d(-4) },
+      { ...sub(st12, 'Permission requests', 'todo', 2, t4), projectId: p2, assigneeId: u3, createdAt: d(-4) },
 
-      { id: 't5', title: 'API endpoint documentation', description: 'Document all REST endpoints before migration',
-        status: 'todo', projectId: 'p3', assigneeId: 'u2', dueDate: d(7), priority: 'p2', labelIds: [],
+      { id: t5, title: 'API endpoint documentation', description: 'Document all REST endpoints before migration',
+        status: 'todo', projectId: p3, assigneeId: u2, dueDate: d(7), priority: 'p2', labelIds: [],
         blockedBy: '', order: 1, parentId: '', attachments: [], comments: [], activityLog: [], createdAt: d(-2) },
 
-      { id: 't6', title: 'Push notification service', description: 'Implement push notifications for iOS and Android',
-        status: 'todo', projectId: 'p2', assigneeId: 'u4', dueDate: d(10), priority: 'p1', labelIds: ['l2', 'l5'],
-        blockedBy: 't4', order: 2, parentId: '',
+      { id: t6, title: 'Push notification service', description: 'Implement push notifications for iOS and Android',
+        status: 'todo', projectId: p2, assigneeId: u4, dueDate: d(10), priority: 'p1', labelIds: [l2, l5],
+        blockedBy: t4, order: 2, parentId: '',
         attachments: [], comments: [], activityLog: [], createdAt: d(-1) },
-      // Subtasks of t6
-      { id: 'st13', title: 'iOS integration', description: '', status: 'todo', projectId: 'p2', assigneeId: 'u4', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 0, parentId: 't6', attachments: [], comments: [], activityLog: [], createdAt: d(-1) },
-      { id: 'st14', title: 'Android integration', description: '', status: 'todo', projectId: 'p2', assigneeId: 'u4', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 1, parentId: 't6', attachments: [], comments: [], activityLog: [], createdAt: d(-1) },
-      { id: 'st15', title: 'Backend service', description: '', status: 'todo', projectId: 'p2', assigneeId: 'u4', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 2, parentId: 't6', attachments: [], comments: [], activityLog: [], createdAt: d(-1) },
+      { ...sub(st13, 'iOS integration',    'todo', 0, t6), projectId: p2, assigneeId: u4, createdAt: d(-1) },
+      { ...sub(st14, 'Android integration','todo', 1, t6), projectId: p2, assigneeId: u4, createdAt: d(-1) },
+      { ...sub(st15, 'Backend service',    'todo', 2, t6), projectId: p2, assigneeId: u4, createdAt: d(-1) },
 
-      { id: 't7', title: 'Database schema migration', description: 'Migrate from MySQL to PostgreSQL',
-        status: 'in-progress', projectId: 'p3', assigneeId: 'u1', dueDate: d(3), priority: 'p0', labelIds: ['l5', 'l4'],
+      { id: t7, title: 'Database schema migration', description: 'Migrate from MySQL to PostgreSQL',
+        status: 'in-progress', projectId: p3, assigneeId: u1, dueDate: d(3), priority: 'p0', labelIds: [l5, l4],
         blockedBy: '', order: 2, parentId: '', effort: 'xl',
-        attachments: [{ id: 'a4', name: 'migration-plan.pdf', size: '890 KB', type: 'pdf' }],
+        attachments: [{ id: this.generateId(), name: 'migration-plan.pdf', size: '890 KB', type: 'pdf' }],
         comments: [], activityLog: [], createdAt: d(-6) },
-      // Subtasks of t7
-      { id: 'st16', title: 'Schema mapping', description: '', status: 'done', projectId: 'p3', assigneeId: 'u1', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 0, parentId: 't7', attachments: [], comments: [], activityLog: [], createdAt: d(-6) },
-      { id: 'st17', title: 'Data migration script', description: '', status: 'todo', projectId: 'p3', assigneeId: 'u1', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 1, parentId: 't7', attachments: [], comments: [], activityLog: [], createdAt: d(-6) },
-      { id: 'st18', title: 'Testing', description: '', status: 'todo', projectId: 'p3', assigneeId: 'u1', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 2, parentId: 't7', attachments: [], comments: [], activityLog: [], createdAt: d(-6) },
+      { ...sub(st16, 'Schema mapping',         'done', 0, t7), projectId: p3, assigneeId: u1, createdAt: d(-6) },
+      { ...sub(st17, 'Data migration script',  'todo', 1, t7), projectId: p3, assigneeId: u1, createdAt: d(-6) },
+      { ...sub(st18, 'Testing',                'todo', 2, t7), projectId: p3, assigneeId: u1, createdAt: d(-6) },
 
-      { id: 't8', title: 'Performance audit', description: 'Run Lighthouse and optimize critical paths',
-        status: 'done', projectId: 'p1', assigneeId: 'u3', dueDate: d(-3), priority: 'p3', labelIds: [],
+      { id: t8, title: 'Performance audit', description: 'Run Lighthouse and optimize critical paths',
+        status: 'done', projectId: p1, assigneeId: u3, dueDate: d(-3), priority: 'p3', labelIds: [],
         blockedBy: '', order: 1, parentId: '',
         attachments: [], comments: [], activityLog: [], createdAt: d(-10) },
-      // Subtasks of t8
-      { id: 'st19', title: 'Run Lighthouse', description: '', status: 'done', projectId: 'p1', assigneeId: 'u3', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 0, parentId: 't8', attachments: [], comments: [], activityLog: [], createdAt: d(-10) },
-      { id: 'st20', title: 'Optimize images', description: '', status: 'done', projectId: 'p1', assigneeId: 'u3', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 1, parentId: 't8', attachments: [], comments: [], activityLog: [], createdAt: d(-10) },
-      { id: 'st21', title: 'Fix render-blocking', description: '', status: 'done', projectId: 'p1', assigneeId: 'u3', dueDate: '', priority: '', labelIds: [], blockedBy: '', order: 2, parentId: 't8', attachments: [], comments: [], activityLog: [], createdAt: d(-10) },
+      { ...sub(st19, 'Run Lighthouse',     'done', 0, t8), projectId: p1, assigneeId: u3, createdAt: d(-10) },
+      { ...sub(st20, 'Optimize images',    'done', 1, t8), projectId: p1, assigneeId: u3, createdAt: d(-10) },
+      { ...sub(st21, 'Fix render-blocking','done', 2, t8), projectId: p1, assigneeId: u3, createdAt: d(-10) },
     ];
 
     this.notifications = [
-      { id: 'n1', type: 'deadline', text: 'Deadline approaching: "User onboarding screens" is due tomorrow', taskId: 't4', read: false, timestamp: new Date().toISOString() },
-      { id: 'n2', type: 'assign', text: 'You were assigned to "Design homepage mockups"', taskId: 't1', read: false, timestamp: new Date(today - 3600000).toISOString() },
-      { id: 'n3', type: 'comment', text: 'Marcus commented on "Design homepage mockups"', taskId: 't1', read: true, timestamp: new Date(today - 86400000).toISOString() },
+      { id: this.generateId(), type: 'deadline', text: 'Deadline approaching: "User onboarding screens" is due tomorrow', taskId: t4, read: false, timestamp: new Date().toISOString() },
+      { id: this.generateId(), type: 'assign',   text: 'You were assigned to "Design homepage mockups"', taskId: t1, read: false, timestamp: new Date(today - 3600000).toISOString() },
+      { id: this.generateId(), type: 'comment',  text: 'Marcus commented on "Design homepage mockups"', taskId: t1, read: true,  timestamp: new Date(today - 86400000).toISOString() },
     ];
     this.save();
   },
