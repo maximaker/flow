@@ -1,4 +1,15 @@
 export const taskActions = {
+  // ===== TASK MODAL HELPERS =====
+  toggleMoreOptions() {
+    const body = document.getElementById('more-options-body');
+    const chevron = document.getElementById('more-options-chevron');
+    const toggle = document.getElementById('more-options-toggle');
+    if (!body) return;
+    const isOpen = body.classList.toggle('open');
+    if (chevron) chevron.style.transform = isOpen ? 'rotate(180deg)' : '';
+    if (toggle) toggle.classList.toggle('open', isOpen);
+  },
+
   // ===== TASK CRUD =====
   showTaskModal(defaultStatus) {
     this.editingTaskId = null;
@@ -15,6 +26,13 @@ export const taskActions = {
     this.renderLabelPicker('modal-task-labels', []);
     this._pendingSubtasks = [];
     this.populateTemplateSelect();
+    // Reset more-options to collapsed state
+    const moreBody = document.getElementById('more-options-body');
+    const moreChevron = document.getElementById('more-options-chevron');
+    const moreToggle = document.getElementById('more-options-toggle');
+    if (moreBody) { moreBody.classList.remove('open'); }
+    if (moreChevron) moreChevron.style.transform = '';
+    if (moreToggle) moreToggle.classList.remove('open');
     document.getElementById('task-modal-overlay').classList.add('show');
 
     // Smart defaults: always default assignee to current user

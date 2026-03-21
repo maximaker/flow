@@ -115,7 +115,7 @@
         <div class="topbar-right">
           <div class="quick-add-box" id="quick-add-box">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <input type="text" placeholder="Quick add: &quot;Design landing @sarah due friday #website p1&quot;" id="quick-add-input">
+            <input type="text" placeholder="Type a task and press Enter..." id="quick-add-input">
           </div>
           <div class="search-box">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -264,6 +264,10 @@
             </div>
           </div>
           <div id="my-tasks-list" class="task-list-view"></div>
+          <div class="inline-add-row" id="inline-add-row">
+            <div class="inline-add-check"></div>
+            <input type="text" id="inline-add-input" placeholder="+ Add a task..." class="inline-add-input">
+          </div>
         </div>
 
         <!-- Board View -->
@@ -598,67 +602,79 @@
           </div>
         </div>
         <div class="modal-body">
+          <!-- Always-visible fields -->
           <div class="form-group">
-            <label>Task Name</label>
-            <input type="text" id="modal-task-name" placeholder="Enter task name">
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>Assignee</label><select id="modal-task-assignee"></select></div>
-            <div class="form-group"><label>Project</label><select id="modal-task-project"></select></div>
+            <input type="text" id="modal-task-name" placeholder="What needs to be done?" class="task-name-input">
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Status</label>
-              <select id="modal-task-status"></select>
+              <label>Who's responsible?</label>
+              <select id="modal-task-assignee"></select>
             </div>
-            <div class="form-group"><label>Due Date</label>
-              <div class="date-quickpicks">
-                <button type="button" class="quickpick-btn" onclick="app.setQuickDate('modal-task-due','today')">Today</button>
-                <button type="button" class="quickpick-btn" onclick="app.setQuickDate('modal-task-due','tomorrow')">Tomorrow</button>
-                <button type="button" class="quickpick-btn" onclick="app.setQuickDate('modal-task-due','nextweek')">Next Week</button>
-                <button type="button" class="quickpick-btn" onclick="app.setQuickDate('modal-task-due','none')">None</button>
+            <div class="form-group">
+              <label>Project</label>
+              <select id="modal-task-project"></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Due Date</label>
+            <div class="date-quickpicks">
+              <button type="button" class="quickpick-btn" onclick="app.setQuickDate('modal-task-due','today')">Today</button>
+              <button type="button" class="quickpick-btn" onclick="app.setQuickDate('modal-task-due','tomorrow')">Tomorrow</button>
+              <button type="button" class="quickpick-btn" onclick="app.setQuickDate('modal-task-due','nextweek')">Next week</button>
+              <button type="button" class="quickpick-btn" onclick="app.setQuickDate('modal-task-due','none')">No date</button>
+            </div>
+            <input type="date" id="modal-task-due">
+          </div>
+
+          <!-- More options (collapsed by default) -->
+          <button type="button" class="more-options-toggle" id="more-options-toggle" onclick="app.toggleMoreOptions()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" id="more-options-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            More options
+          </button>
+          <div class="more-options-body" id="more-options-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Status</label>
+                <select id="modal-task-status"></select>
               </div>
-              <input type="date" id="modal-task-due">
+              <div class="form-group">
+                <label>Priority</label>
+                <select id="modal-task-priority">
+                  <option value="">None</option>
+                  <option value="p0">🔴 Urgent</option>
+                  <option value="p1">🟠 High</option>
+                  <option value="p2">🟡 Medium</option>
+                  <option value="p3">🔵 Low</option>
+                </select>
+              </div>
             </div>
-          </div>
-          <div class="form-row">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Effort estimate</label>
+                <select id="modal-task-effort">
+                  <option value="">Not sure yet</option>
+                  <option value="trivial">Quick (under 1h)</option>
+                  <option value="small">Short (1–2h)</option>
+                  <option value="medium">Half day</option>
+                  <option value="large">1–2 days</option>
+                  <option value="xl">3–5 days</option>
+                  <option value="epic">A week or more</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Labels</label><div class="label-picker" id="modal-task-labels"></div></div>
+            </div>
             <div class="form-group">
-              <label>Priority</label>
-              <select id="modal-task-priority">
-                <option value="">None</option>
-                <option value="p0">Urgent</option>
-                <option value="p1">High</option>
-                <option value="p2">Medium</option>
-                <option value="p3">Low</option>
-              </select>
+              <label>Description</label>
+              <textarea id="modal-task-desc" placeholder="Add any notes or context..." rows="3"></textarea>
             </div>
-            <div class="form-group"><label>Labels</label><div class="label-picker" id="modal-task-labels"></div></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Effort</label>
-              <select id="modal-task-effort">
-                <option value="">None</option>
-                <option value="trivial">&lt; 1h</option>
-                <option value="small">1-2h</option>
-                <option value="medium">Half day</option>
-                <option value="large">1-2 days</option>
-                <option value="xl">3-5 days</option>
-                <option value="epic">1+ week</option>
-              </select>
-            </div>
-            <div class="form-group"></div>
-          </div>
-          <div class="form-group">
-            <label>Description</label>
-            <textarea id="modal-task-desc" placeholder="Add a description..." rows="3"></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn-text" onclick="app.saveAsTemplate()" title="Save current fields as a template">Save as Template</button>
           <div style="flex:1"></div>
           <button class="btn-secondary" onclick="app.closeTaskModal()">Cancel</button>
-          <button class="btn-primary" onclick="app.saveTaskFromModal()">Create Task</button>
+          <button class="btn-primary" id="task-modal-save-btn" onclick="app.saveTaskFromModal()">Create Task</button>
         </div>
       </div>
     </div>

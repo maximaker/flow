@@ -212,10 +212,35 @@ export const useAppStore = defineStore('app', {
       if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
     });
 
-    // Quick add
+    // Quick add (topbar)
     document.getElementById('quick-add-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { this.quickAdd(e.target.value); e.target.value = ''; }
     });
+
+    // Inline add-task row (My Tasks view)
+    const inlineInput = document.getElementById('inline-add-input');
+    if (inlineInput) {
+      inlineInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const title = inlineInput.value.trim();
+          if (title) {
+            this.tasks.push({
+              id: this.generateId(), title,
+              description: '', status: this.boardColumns[0]?.id || 'todo',
+              projectId: '', assigneeId: this.currentUserId || '',
+              dueDate: '', priority: '', labelIds: [], blockedBy: [],
+              order: this.tasks.length, parentId: '',
+              attachments: [], comments: [],
+              activityLog: [{ text: 'Task created', timestamp: new Date().toISOString() }],
+              createdAt: new Date().toISOString().split('T')[0],
+            });
+            inlineInput.value = '';
+            this.save(); this.renderMyTasks();
+          }
+        }
+        if (e.key === 'Escape') { inlineInput.value = ''; inlineInput.blur(); }
+      });
+    }
 
     // Sort select
     document.getElementById('sort-select')?.addEventListener('change', () => { this.sortPref = document.getElementById('sort-select').value; this.saveSortPref(); this.renderMyTasks(); });

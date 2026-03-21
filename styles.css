@@ -1943,3 +1943,48 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .temp-pw-row { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; }
 .temp-pw-row code { flex: 1; font-family: 'Courier New', monospace; font-size: 14px; font-weight: 600; color: var(--text); user-select: all; }
 .temp-pw-warning { font-size: 12px; color: var(--danger); font-weight: 500; margin-top: 4px; }
+
+/* ── Task modal: prominent task name input ── */
+.task-name-input {
+  width: 100%; font-size: 17px; font-weight: 600; color: var(--text);
+  background: transparent; border: none; border-bottom: 2px solid var(--border);
+  border-radius: 0; padding: 6px 0 10px; outline: none;
+  transition: border-color 0.2s ease;
+}
+.task-name-input::placeholder { color: var(--text-light); font-weight: 400; }
+.task-name-input:focus { border-bottom-color: var(--accent); }
+
+/* ── Task modal: more options toggle ── */
+.more-options-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none; padding: 6px 0; margin-top: 4px;
+  color: var(--text-light); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: color 0.15s ease;
+}
+.more-options-toggle:hover { color: var(--text); }
+.more-options-toggle svg { transition: transform 0.2s ease; flex-shrink: 0; }
+.more-options-toggle.open { color: var(--text); }
+
+/* ── Task modal: collapsible more-options body ── */
+.more-options-body {
+  display: none; overflow: hidden;
+  padding-top: 8px;
+}
+.more-options-body.open { display: block; }
+
+/* ── Inline add-task row ── */
+.inline-add-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; border-bottom: 1px solid var(--border-light);
+  transition: background 0.15s ease;
+}
+.inline-add-row:focus-within { background: var(--bg-white); }
+.inline-add-check {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--border); flex-shrink: 0; opacity: 0.4;
+}
+.inline-add-input {
+  flex: 1; border: none; background: transparent;
+  font-size: 14px; color: var(--text); outline: none; padding: 0;
+}
+.inline-add-input::placeholder { color: var(--text-light); }
