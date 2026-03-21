@@ -32,6 +32,7 @@ export const useAppStore = defineStore('app', {
   _pbSnapshot: {},
   _pbSyncTimer: null,
   _changePwUserId: null,
+  _settingsSection: 'users',
 
   // ===== INIT =====
   }),
@@ -658,6 +659,7 @@ export const useAppStore = defineStore('app', {
       case 'analytics': this.renderAnalytics(); break;
       case 'workload': this.renderWorkload(); break;
       case 'project': this.renderProjectView(); break;
+      case 'settings': this.renderSettings(); break;
     }
   },
 
@@ -1504,6 +1506,124 @@ export const useAppStore = defineStore('app', {
       if (count > 0) { vals.push(count); labels.push(l.name); colors.push(l.color); }
     });
     if (vals.length) this.drawChart('chart-labels', 'bar', { values: vals, labels, colors });
+  },
+
+  // ===== SETTINGS =====
+  renderSettings() {
+    this.switchSettingsSection(this._settingsSection || 'users');
+  },
+
+  switchSettingsSection(section) {
+    this._settingsSection = section;
+    document.querySelectorAll('.settings-sidenav-item').forEach(el =>
+      el.classList.toggle('active', el.dataset.section === section));
+    document.querySelectorAll('.settings-pane').forEach(el =>
+      el.classList.toggle('active', el.id === `settings-pane-${section}`));
+    switch(section) {
+      case 'users':      this.renderSettingsUsers(); break;
+      case 'labels':     this.renderSettingsLabels(); break;
+      case 'account':    this.renderSettingsAccount(); break;
+      case 'appearance': this.renderSettingsAppearance(); break;
+    }
+  },
+
+  renderSettingsUsers() {
+    const el = document.getElementById('settings-users-list');
+    if (!el) return;
+    if (!this.users.length) {
+      el.innerHTML = `<div class="settings-empty">No team members yet.<br>Add someone to get started.</div>`;
+      return;
+    }
+    el.innerHTML = this.users.map(u => `
+      <div class="settings-user-row">
+        <div class="settings-user-info">
+          <div class="team-avatar" style="background:${u.color}">${this.initials(u.name)}</div>
+          <div>
+            <div class="settings-user-name">${this.esc(u.name)} ${this.getRoleBadge(u.role)}</div>
+            <div class="settings-user-email">${this.esc(u.email || '')}</div>
+          </div>
+        </div>
+        <div class="settings-user-actions">
+          ${(u.id === this.currentUserId || this.canManageUser(u.id)) ? `
+            <button class="btn-secondary btn-sm" onclick="app.showChangePassword('${u.id}')">Change password</button>
+          ` : ''}
+          <button class="btn-secondary btn-sm" onclick="app.editUser('${u.id}')">Edit</button>
+          ${this.canManageUser(u.id) && u.id !== this.currentUserId ? `
+            <button class="btn-danger btn-sm" onclick="app.deleteUser('${u.id}')">Delete</button>
+          ` : ''}
+        </div>
+      </div>`).join('');
+  },
+
+  renderSettingsLabels() {
+    const el = document.getElementById('settings-labels-list');
+    if (!el) return;
+    if (!this.labels.length) {
+      el.innerHTML = `<div class="settings-empty">No labels yet. Use the button above to create one.</div>`;
+      return;
+    }
+    el.innerHTML = this.labels.map(l => `
+      <div class="settings-row">
+        <div class="settings-label-info">
+          <span class="label-dot" style="background:${l.color}; width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:8px;"></span>
+          <span>${this.esc(l.name)}</span>
+        </div>
+        <button class="btn-danger btn-sm" onclick="app.deleteLabel('${l.id}');app.renderSettingsLabels()">Delete</button>
+      </div>`).join('');
+  },
+
+  renderSettingsAccount() {
+    const el = document.getElementById('settings-account-content');
+    if (!el) return;
+    const u = this.users.find(u => u.id === this.currentUserId);
+    if (!u) return;
+    el.innerHTML = `
+      <div class="settings-account-card">
+        <div class="settings-account-avatar" style="background:${u.color}">${this.initials(u.name)}</div>
+        <div class="settings-account-details">
+          <div class="settings-account-name">${this.esc(u.name)} ${this.getRoleBadge(u.role)}</div>
+          <div class="settings-user-email">${this.esc(u.email || '')}</div>
+        </div>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Profile</div>
+          <div class="settings-row-desc">Update your name, email and avatar colour</div>
+        </div>
+        <button class="btn-secondary btn-sm" onclick="app.editUser('${u.id}')">Edit profile</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Password</div>
+          <div class="settings-row-desc">Change your login password</div>
+        </div>
+        <button class="btn-secondary btn-sm" onclick="app.showChangePassword('${u.id}')">Change password</button>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Sign out</div>
+          <div class="settings-row-desc">Log out of your account on this device</div>
+        </div>
+        <button class="btn-danger btn-sm" onclick="app.logout()">Sign out</button>
+      </div>`;
+  },
+
+  renderSettingsAppearance() {
+    const el = document.getElementById('settings-appearance-content');
+    if (!el) return;
+    el.innerHTML = `
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Dark mode</div>
+          <div class="settings-row-desc">Switch between light and dark theme</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" ${this.theme === 'dark' ? 'checked' : ''} onchange="app.toggleTheme()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>`;
   },
 
   // ===== WORKLOAD =====
@@ -2675,6 +2795,7 @@ export const useAppStore = defineStore('app', {
       const u = this.users.find(x => x.id === this.editingUserId);
       if (u) { u.name = name; u.email = email; u.role = role; u.color = color; }
       this.save(); this.closeUserModal(); this.render();
+      if (this.currentView === 'settings') this.renderSettingsUsers();
       this.toast('Member updated', 'success');
     } else {
       // Generate a random temporary password for the new PocketBase user
@@ -2683,6 +2804,7 @@ export const useAppStore = defineStore('app', {
         const record = await pb.collection('users').create({ name, email, role, color, password: tempPass, passwordConfirm: tempPass });
         this.users.push({ id: record.id, name, email, role, color });
         this.save(); this.closeUserModal(); this.render();
+        if (this.currentView === 'settings') this.renderSettingsUsers();
         this.toast('Member added — share temp password with them', 'success');
         alert(`New member created!\nEmail: ${email}\nTemporary password: ${tempPass}\n\nPlease share this with them so they can log in and change it.`);
       } catch(e) {

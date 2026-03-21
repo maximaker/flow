@@ -98,6 +98,12 @@
       </nav>
 
       <div class="sidebar-footer">
+        <a href="#" class="nav-item settings-nav-link" data-view="settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span>Settings</span>
+        </a>
         <div class="sidebar-footer-row">
           <div class="current-user" id="current-user"></div>
           <button class="btn-icon-sm theme-toggle" id="theme-toggle" title="Toggle dark mode">
@@ -349,6 +355,92 @@
           </div>
           <div id="project-view-content"></div>
         </div>
+
+        <!-- Settings View -->
+        <div class="view" id="view-settings">
+          <div class="settings-layout">
+
+            <!-- Settings sidebar nav -->
+            <nav class="settings-sidenav">
+              <p class="settings-sidenav-label">Workspace</p>
+              <button class="settings-sidenav-item active" data-section="users" onclick="app.switchSettingsSection('users')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Users
+              </button>
+              <button class="settings-sidenav-item" data-section="labels" onclick="app.switchSettingsSection('labels')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                Labels
+              </button>
+              <p class="settings-sidenav-label">Personal</p>
+              <button class="settings-sidenav-item" data-section="account" onclick="app.switchSettingsSection('account')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                My account
+              </button>
+              <button class="settings-sidenav-item" data-section="appearance" onclick="app.switchSettingsSection('appearance')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Appearance
+              </button>
+            </nav>
+
+            <!-- Settings content panes -->
+            <div class="settings-panes">
+
+              <!-- Users -->
+              <div class="settings-pane active" id="settings-pane-users">
+                <div class="settings-pane-header">
+                  <div>
+                    <h2>Users</h2>
+                    <p class="subtitle">Manage team members and their access levels</p>
+                  </div>
+                  <button class="btn-primary" onclick="app.showUserModal()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add member
+                  </button>
+                </div>
+                <div id="settings-users-list"></div>
+              </div>
+
+              <!-- Labels -->
+              <div class="settings-pane" id="settings-pane-labels">
+                <div class="settings-pane-header">
+                  <div>
+                    <h2>Labels</h2>
+                    <p class="subtitle">Create and manage labels to organize your tasks</p>
+                  </div>
+                  <button class="btn-primary" onclick="app.showLabelModal()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add label
+                  </button>
+                </div>
+                <div id="settings-labels-list"></div>
+              </div>
+
+              <!-- My account -->
+              <div class="settings-pane" id="settings-pane-account">
+                <div class="settings-pane-header">
+                  <div>
+                    <h2>My account</h2>
+                    <p class="subtitle">Your personal details and security</p>
+                  </div>
+                </div>
+                <div id="settings-account-content"></div>
+              </div>
+
+              <!-- Appearance -->
+              <div class="settings-pane" id="settings-pane-appearance">
+                <div class="settings-pane-header">
+                  <div>
+                    <h2>Appearance</h2>
+                    <p class="subtitle">Customize how Flow looks for you</p>
+                  </div>
+                </div>
+                <div id="settings-appearance-content"></div>
+              </div>
+
+            </div><!-- /settings-panes -->
+          </div><!-- /settings-layout -->
+        </div><!-- /view-settings -->
+
       </div>
     </main>
 
