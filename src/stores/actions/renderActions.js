@@ -1,6 +1,17 @@
 export const renderActions = {
   // ===== HOME =====
   renderHome() {
+    // ── First-run state: no tasks and no projects yet ──
+    const homeDashboard = document.querySelector('.home-dashboard');
+    const firstRunEl = document.getElementById('first-run-guide');
+    if (this.tasks.length === 0 && this.projects.length === 0) {
+      if (homeDashboard) homeDashboard.style.display = 'none';
+      if (firstRunEl) firstRunEl.style.display = 'flex';
+      return;
+    }
+    if (homeDashboard) homeDashboard.style.display = '';
+    if (firstRunEl) firstRunEl.style.display = 'none';
+
     const hour = new Date().getHours();
     const dayOfWeek = new Date().getDay();
     document.getElementById('greeting-time').textContent = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
@@ -266,14 +277,22 @@ export const renderActions = {
       return html;
     };
 
+    const isFiltered = search || fProj || fStatus || fPriority || fLabel || fAssignee;
     document.getElementById('my-tasks-list').innerHTML = rootTasks.length
       ? rootTasks.map(t => renderTaskRow(t, 0)).join('')
-      : `<div class="empty-state-rich">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
-          <p>Your task list is clear — nice work!</p>
-          <p class="empty-state-sub">Ready to plan something new?</p>
-          <button class="btn-primary" onclick="app.showTaskModal()">Create your first task</button>
-        </div>`;
+      : isFiltered
+        ? `<div class="empty-state-rich">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <p>No tasks match your search</p>
+            <p class="empty-state-sub">Try different keywords or remove a filter.</p>
+            <button class="btn-secondary" onclick="app.clearFilters()">Clear filters</button>
+          </div>`
+        : `<div class="empty-state-rich">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+            <p>Your task list is clear — nice work!</p>
+            <p class="empty-state-sub">Ready to plan something new?</p>
+            <button class="btn-primary" onclick="app.showTaskModal()">Create your first task</button>
+          </div>`;
 
     this.updateBulkBar();
   },

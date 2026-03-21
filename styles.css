@@ -1988,3 +1988,60 @@ input:focus, select:focus, textarea:focus { outline: none; }
   font-size: 14px; color: var(--text); outline: none; padding: 0;
 }
 .inline-add-input::placeholder { color: var(--text-light); }
+
+/* ── First-run / getting-started guide ── */
+.first-run-guide {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 48px 24px;
+}
+.first-run-inner {
+  max-width: 520px; width: 100%; text-align: center;
+}
+.first-run-icon {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: var(--primary-lighter); display: flex;
+  align-items: center; justify-content: center; margin: 0 auto 24px;
+  color: var(--accent);
+}
+.first-run-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+.first-run-sub { color: var(--text-light); font-size: 14px; margin-bottom: 32px; }
+.first-run-steps { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.first-run-step {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 18px; border-radius: 10px;
+  background: var(--bg-white); border: 1px solid var(--border);
+  cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.first-run-step:hover {
+  border-color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.first-run-step-num {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  background: var(--accent); color: #fff;
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.first-run-step-body { flex: 1; }
+.first-run-step-body strong { display: block; font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.first-run-step-body span { font-size: 13px; color: var(--text-light); }
+.first-run-arrow { color: var(--text-light); flex-shrink: 0; transition: transform 0.15s ease; }
+.first-run-step:hover .first-run-arrow { transform: translateX(3px); color: var(--accent); }
+
+/* ── Sidebar: no-projects nudge ── */
+.sidebar-empty-projects {
+  display: block; width: 100%; text-align: left;
+  padding: 7px 12px; border-radius: 7px; border: none;
+  background: none; color: var(--text-light); font-size: 12px;
+  cursor: pointer; transition: color 0.15s ease, background 0.15s ease;
+}
+.sidebar-empty-projects:hover { background: var(--bg-sidebar-hover); color: var(--text); }
+
+/* ── Keyboard hint badge inside a button ── */
+.btn-kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 5px; height: 18px; border-radius: 4px;
+  font-size: 11px; font-weight: 600; font-family: inherit;
+  background: rgba(255,255,255,0.2); color: inherit;
+  margin-left: 6px; letter-spacing: 0.02em;
+  border: 1px solid rgba(255,255,255,0.3);
+}

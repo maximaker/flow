@@ -181,37 +181,77 @@
       <div class="content-area" id="content-area">
         <!-- Home View -->
         <div class="view active" id="view-home">
-          <div class="today-focus-card hidden" id="today-focus">
-            <div class="focus-header">
-              <div class="focus-tabs">
-                <button class="focus-tab active" data-focus="today" onclick="app.switchFocusTab('today')">Today</button>
-                <button class="focus-tab" data-focus="week" onclick="app.switchFocusTab('week')">This Week</button>
+          <!-- First-run guide: shown only when there are no tasks and no projects -->
+          <div id="first-run-guide" class="first-run-guide" style="display:none">
+            <div class="first-run-inner">
+              <div class="first-run-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              </div>
+              <h2 class="first-run-title">Welcome — let's get you set up</h2>
+              <p class="first-run-sub">You're just a few clicks away from having your team's work in one place.</p>
+              <div class="first-run-steps">
+                <div class="first-run-step" onclick="app.showProjectModal()">
+                  <div class="first-run-step-num">1</div>
+                  <div class="first-run-step-body">
+                    <strong>Create a project</strong>
+                    <span>Group your tasks under a project — like "Website Redesign" or "Q3 Goals".</span>
+                  </div>
+                  <svg class="first-run-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+                <div class="first-run-step" onclick="app.showTaskModal()">
+                  <div class="first-run-step-num">2</div>
+                  <div class="first-run-step-body">
+                    <strong>Add your first task</strong>
+                    <span>What's the first thing that needs to get done? Add it here.</span>
+                  </div>
+                  <svg class="first-run-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+                <div class="first-run-step" onclick="app.switchView('settings')">
+                  <div class="first-run-step-num">3</div>
+                  <div class="first-run-step-body">
+                    <strong>Invite your team</strong>
+                    <span>Add teammates so you can assign tasks and track who's doing what.</span>
+                  </div>
+                  <svg class="first-run-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
               </div>
             </div>
-            <div class="focus-tab-content active" id="focus-today">
-              <div id="today-focus-list" class="today-focus-list"></div>
-            </div>
-            <div class="focus-tab-content" id="focus-week">
-              <div id="week-focus-list" class="today-focus-list"></div>
-            </div>
           </div>
-          <div class="home-grid">
-            <div class="home-card welcome-card">
-              <h2>Good <span id="greeting-time">morning</span>, <span id="greeting-name">User</span></h2>
-              <p class="subtitle">Here's what's happening with your projects today.</p>
-              <div class="home-stats" id="home-stats"></div>
+
+          <!-- Regular dashboard: hidden until there's at least one task or project -->
+          <div class="home-dashboard">
+            <div class="today-focus-card hidden" id="today-focus">
+              <div class="focus-header">
+                <div class="focus-tabs">
+                  <button class="focus-tab active" data-focus="today" onclick="app.switchFocusTab('today')">Today</button>
+                  <button class="focus-tab" data-focus="week" onclick="app.switchFocusTab('week')">This Week</button>
+                </div>
+              </div>
+              <div class="focus-tab-content active" id="focus-today">
+                <div id="today-focus-list" class="today-focus-list"></div>
+              </div>
+              <div class="focus-tab-content" id="focus-week">
+                <div id="week-focus-list" class="today-focus-list"></div>
+              </div>
             </div>
-            <div class="home-card">
-              <h3>Upcoming Deadlines</h3>
-              <div id="upcoming-deadlines" class="upcoming-list"></div>
-            </div>
-            <div class="home-card">
-              <h3>Recent Activity</h3>
-              <div id="recent-activity" class="activity-list"></div>
-            </div>
-            <div class="home-card">
-              <h3>My Tasks Overview</h3>
-              <div id="my-tasks-overview" class="tasks-overview"></div>
+            <div class="home-grid">
+              <div class="home-card welcome-card">
+                <h2>Good <span id="greeting-time">morning</span>, <span id="greeting-name">User</span></h2>
+                <p class="subtitle">Here's what's happening with your projects today.</p>
+                <div class="home-stats" id="home-stats"></div>
+              </div>
+              <div class="home-card">
+                <h3>Upcoming Deadlines</h3>
+                <div id="upcoming-deadlines" class="upcoming-list"></div>
+              </div>
+              <div class="home-card">
+                <h3>Recent Activity</h3>
+                <div id="recent-activity" class="activity-list"></div>
+              </div>
+              <div class="home-card">
+                <h3>My Tasks Overview</h3>
+                <div id="my-tasks-overview" class="tasks-overview"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -223,6 +263,7 @@
               <button class="btn-primary" onclick="app.showTaskModal()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Add Task
+                <kbd class="btn-kbd">N</kbd>
               </button>
               <button class="btn-secondary" onclick="app.showBulkImport()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
