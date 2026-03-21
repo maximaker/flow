@@ -1898,8 +1898,7 @@ export const useAppStore = defineStore('app', {
         this.toastWithAction('\u2713 Done! Up next: ' + next.title, 'Open', () => this.openTask(next.id));
       }
     }
-    task.activityLog = task.activityLog || [];
-    task.activityLog.push({ text: `Status changed to ${task.status}`, timestamp: new Date().toISOString() });
+    this._appendActivity(task, `Status changed to ${task.status}`);
     this.render();
     this.save();
   },
@@ -2027,8 +2026,7 @@ export const useAppStore = defineStore('app', {
     task.labelIds = this.getSelectedLabels('panel-labels');
     // parentId is preserved — not editable from panel
 
-    task.activityLog = task.activityLog || [];
-    if (oldStatus !== task.status) task.activityLog.push({ text: `Status changed to ${task.status}`, timestamp: new Date().toISOString() });
+    if (oldStatus !== task.status) this._appendActivity(task, `Status changed to ${task.status}`);
 
     const se = document.getElementById('panel-task-status');
     const statusColors2 = { todo: 'var(--todo)', 'in-progress': 'var(--progress)', done: 'var(--done)' };
@@ -2202,8 +2200,7 @@ export const useAppStore = defineStore('app', {
     if (!wasDone) {
       this.getAllDescendants(st.id).forEach(d => d.status = 'done');
     }
-    st.activityLog = st.activityLog || [];
-    st.activityLog.push({ text: `Status changed to ${st.status}`, timestamp: new Date().toISOString() });
+    this._appendActivity(st, `Status changed to ${st.status}`);
     // Check if all siblings are done -> mark parent done
     if (st.parentId) {
       const parent = this.tasks.find(t => t.id === st.parentId);
@@ -2606,8 +2603,7 @@ export const useAppStore = defineStore('app', {
     const oldStatus = task.status;
     task.status = statuses[(idx + 1) % statuses.length];
     document.getElementById('panel-status').value = task.status;
-    task.activityLog = task.activityLog || [];
-    if (oldStatus !== task.status) task.activityLog.push({ text: `Status changed to ${task.status}`, timestamp: new Date().toISOString() });
+    if (oldStatus !== task.status) this._appendActivity(task, `Status changed to ${task.status}`);
     if (task.status === 'done' && oldStatus !== 'done') this.celebrate();
     this.save(); this.updateContextChips(task); this.renderActivityTimeline(task); this.render();
   },
@@ -3204,7 +3200,7 @@ export const useAppStore = defineStore('app', {
     const count = this.selectedTasks.length;
     this.selectedTasks.forEach(id => {
       const t = this.tasks.find(x => x.id === id);
-      if (t) { t.status = status; t.activityLog = t.activityLog||[]; t.activityLog.push({ text: `Bulk moved to ${status}`, timestamp: new Date().toISOString() }); }
+      if (t) { t.status = status; this._appendActivity(t, `Bulk moved to ${status}`); }
     });
     if (status === 'done') this.celebrate();
     this.clearSelection(); this.render(); this.save();
@@ -3364,6 +3360,15 @@ export const useAppStore = defineStore('app', {
 
   // ===== UTILITIES =====
   esc(str) { const d = document.createElement('div'); d.textContent = str||''; return d.innerHTML; },
+  // Append an activity-log entry and enforce a max-size cap (D-01).
+  // Keeping the log inside the task record is fine for small teams; this guard
+  // prevents records from growing into the hundreds-of-KB range over time.
+  _appendActivity(task, text) {
+    task.activityLog = task.activityLog || [];
+    task.activityLog.push({ text, timestamp: new Date().toISOString() });
+    if (task.activityLog.length > 50) task.activityLog = task.activityLog.slice(-50);
+  },
+
   // Helper: set selected options on a <select multiple> element by an array of values
   _setMultiSelect(elementId, values) {
     const el = document.getElementById(elementId);
@@ -3985,8 +3990,7 @@ export const useAppStore = defineStore('app', {
     if (task) {
       this.pushUndo('Status changed');
       task.status = status;
-      task.activityLog = task.activityLog || [];
-      task.activityLog.push({ text: `Status changed to ${status}`, timestamp: new Date().toISOString() });
+      this._appendActivity(task, `Status changed to ${status}`);
       if (status === 'done') this.celebrate();
       this.render(); this.save();
     }
