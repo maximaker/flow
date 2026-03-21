@@ -639,9 +639,9 @@ export const useAppStore = defineStore('app', {
     this.updateBulkBar();
     document.querySelectorAll('.nav-item[data-view]').forEach(el => el.classList.toggle('active', el.dataset.view === view));
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    const viewMap = { home: 'view-home', 'my-tasks': 'view-my-tasks', board: 'view-board', timeline: 'view-timeline', analytics: 'view-analytics', workload: 'view-workload', project: 'view-project' };
+    const viewMap = { home: 'view-home', 'my-tasks': 'view-my-tasks', board: 'view-board', timeline: 'view-timeline', analytics: 'view-analytics', workload: 'view-workload', project: 'view-project', settings: 'view-settings' };
     document.getElementById(viewMap[view])?.classList.add('active');
-    const titles = { home: 'Home', 'my-tasks': 'My Tasks', board: 'Board', timeline: 'Timeline', analytics: 'Analytics', workload: 'Workload', project: 'Project' };
+    const titles = { home: 'Home', 'my-tasks': 'My Tasks', board: 'Board', timeline: 'Timeline', analytics: 'Analytics', workload: 'Workload', project: 'Project', settings: 'Settings' };
     document.getElementById('page-title').textContent = titles[view];
     this.render();
   },
