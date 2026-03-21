@@ -1080,12 +1080,12 @@ export const useAppStore = defineStore('app', {
   loadTreeState() {
     try {
       const saved = JSON.parse(localStorage.getItem('fb_expanded_tasks') || '[]');
-      this.expandedTasks = new Set(saved);
-    } catch { this.expandedTasks = new Set(); }
+      this.expandedTasks = Array.isArray(saved) ? saved : [];
+    } catch { this.expandedTasks = []; }
   },
 
   saveTreeState() {
-    localStorage.setItem('fb_expanded_tasks', JSON.stringify([...this.expandedTasks]));
+    localStorage.setItem('fb_expanded_tasks', JSON.stringify(this.expandedTasks));
   },
 
   // ===== LIST DRAG & DROP (reparenting across tree) =====
