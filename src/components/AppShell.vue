@@ -648,6 +648,36 @@
       </div>
     </div>
 
+    <!-- Change Password Modal -->
+    <div class="modal-overlay" id="change-pw-modal-overlay">
+      <div class="modal" id="change-pw-modal">
+        <div class="modal-header">
+          <h3 id="change-pw-modal-title">Change Password</h3>
+          <button class="btn-icon" onclick="app.closeChangePwModal()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group" id="change-pw-old-group">
+            <label>Current Password</label>
+            <input type="password" id="change-pw-old" placeholder="Enter your current password">
+          </div>
+          <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="change-pw-new" placeholder="At least 8 characters">
+          </div>
+          <div class="form-group">
+            <label>Confirm New Password</label>
+            <input type="password" id="change-pw-confirm" placeholder="Repeat new password">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="app.closeChangePwModal()">Cancel</button>
+          <button class="btn-primary" onclick="app.submitChangePassword()">Update Password</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Label Management Modal -->
     <div class="modal-overlay" id="label-modal-overlay">
       <div class="modal" id="label-modal">

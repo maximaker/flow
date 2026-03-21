@@ -30,6 +30,7 @@ export const useAppStore = defineStore('app', {
   // PocketBase sync state
   _pbSnapshot: {},
   _pbSyncTimer: null,
+  _changePwUserId: null,
 
   // ===== INIT =====
   }),
@@ -127,17 +128,35 @@ export const useAppStore = defineStore('app', {
     const targetUser = this.users.find(u => u.id === userId);
     if (!targetUser) return;
     const isSelf = userId === this.currentUserId;
-    let oldPw = null;
-    if (isSelf) {
-      oldPw = prompt('Enter your current password:');
-      if (oldPw === null) return;
+    this._changePwUserId = userId;
+    const overlay = document.getElementById('change-pw-modal-overlay');
+    if (overlay) {
+      document.getElementById('change-pw-modal-title').textContent = isSelf ? 'Change Your Password' : `Change Password — ${targetUser.name}`;
+      document.getElementById('change-pw-old-group').style.display = isSelf ? '' : 'none';
+      document.getElementById('change-pw-old').value = '';
+      document.getElementById('change-pw-new').value = '';
+      document.getElementById('change-pw-confirm').value = '';
+      overlay.classList.add('show');
+      setTimeout(() => document.getElementById('change-pw-new').focus(), 50);
     }
-    const newPw = prompt(`Set new password for ${targetUser.name}:`);
-    if (newPw && newPw.length >= 8) {
-      this.changePassword(userId, newPw, oldPw);
-    } else if (newPw !== null) {
-      this.toast('Password must be at least 8 characters', 'error');
-    }
+  },
+
+  closeChangePwModal() {
+    document.getElementById('change-pw-modal-overlay')?.classList.remove('show');
+    this._changePwUserId = null;
+  },
+
+  async submitChangePassword() {
+    const userId = this._changePwUserId;
+    if (!userId) return;
+    const isSelf = userId === this.currentUserId;
+    const oldPw = isSelf ? document.getElementById('change-pw-old').value : null;
+    const newPw = document.getElementById('change-pw-new').value;
+    const confirm = document.getElementById('change-pw-confirm').value;
+    if (!newPw || newPw.length < 8) { this.toast('Password must be at least 8 characters', 'error'); return; }
+    if (newPw !== confirm) { this.toast('Passwords do not match', 'error'); return; }
+    await this.changePassword(userId, newPw, oldPw);
+    this.closeChangePwModal();
   },
 
   // ===== PERSISTENCE =====
