@@ -676,18 +676,6 @@ export const useAppStore = defineStore('app', {
         </div>
       </div>`).join('');
 
-    const tl = document.getElementById('team-list');
-    tl.innerHTML = this.users.map(u => `
-      <div class="team-item">
-        <div class="team-avatar" style="background:${u.color}">${this.initials(u.name)}</div>
-        <div class="team-item-info"><div class="team-item-name">${this.esc(u.name)} ${this.getRoleBadge(u.role)}</div><div class="team-item-role">${u.role}</div></div>
-        <div class="team-item-actions">
-          ${(u.id === this.currentUserId || this.canManageUser(u.id)) ? `<button class="btn-icon-sm" onclick="event.stopPropagation();app.showChangePassword('${u.id}')" title="Change password"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></button>` : ''}
-          <button class="btn-icon-sm" onclick="app.editUser('${u.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          <button class="btn-icon-sm" onclick="app.deleteUser('${u.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-        </div>
-      </div>`).join('');
-
     const cu = this.getCurrentUser() || this.users[0];
     if (cu) document.getElementById('current-user').innerHTML = `<div class="team-avatar" style="background:${cu.color}">${this.initials(cu.name)}</div><div style="min-width:0"><div style="font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px">${this.esc(cu.name)} ${this.getRoleBadge(cu.role)}</div></div><button class="btn-icon-sm" onclick="app.logout()" title="Sign out" style="margin-left:auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>`;
     this.populateSelects();
