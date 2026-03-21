@@ -31,10 +31,14 @@ export const authActions = {
     if (this._pbTemplates) { this.templates = this._pbTemplates; } else { this.loadTemplates(); }
     this.applyTheme();
     this.checkDeadlineNotifications();
+    // Restore tour completion flag
+    try { const tc = localStorage.getItem('fb_tour_completed'); if (tc) this.tourCompleted = true; } catch {}
     await nextTick();
     this.render();
     this.updateFaviconBadge();
     this._subscribeToRealtime();
+    // Auto-start tour for first-time users
+    if (!this.tourCompleted) setTimeout(() => this.startTour(), 800);
   },
 
   async login(emailArg, passwordArg) {

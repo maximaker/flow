@@ -8,6 +8,7 @@ import { projectActions } from './actions/projectActions.js'
 import { userActions } from './actions/userActions.js'
 import { taskActions } from './actions/taskActions.js'
 import { renderActions } from './actions/renderActions.js'
+import { tourActions } from './actions/tourActions.js'
 
 export const useAppStore = defineStore('app', {
   state: () => ({
@@ -46,6 +47,11 @@ export const useAppStore = defineStore('app', {
   _changePwUserId: null,
   _settingsSection: 'users',
 
+  // Feature: Onboarding tour
+  tourActive: false,
+  tourStep: 0,
+  tourCompleted: false,
+
   // ===== INIT =====
   }),
 
@@ -58,6 +64,7 @@ export const useAppStore = defineStore('app', {
   ...userActions,
   ...taskActions,
   ...renderActions,
+  ...tourActions,
 
   // ===== UTILITY DELEGATES (thin wrappers so this.xxx() keeps working) =====
   generateId: utils.generateId,
@@ -319,6 +326,39 @@ export const useAppStore = defineStore('app', {
     const ids = ['search-input', 'filter-project', 'filter-status', 'filter-priority', 'filter-label', 'filter-assignee'];
     ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     this.renderMyTasks();
+  },
+
+  // ===== TOAST NOTIFICATIONS =====
+  toast(msg, type = '') {
+    const c = document.getElementById('toast-container');
+    if (!c) return;
+    const t = document.createElement('div');
+    t.className = 'toast' + (type ? ' ' + type : '');
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(40px)'; setTimeout(() => t.remove(), 400); }, 3000);
+  },
+
+  toastUndo(msg, undoFn) {
+    const c = document.getElementById('undo-toast-container');
+    if (!c) return;
+    const t = document.createElement('div');
+    t.className = 'undo-toast';
+    t.innerHTML = `<span>${this.esc(msg)}</span><button class="undo-btn">Undo</button>`;
+    t.querySelector('.undo-btn').addEventListener('click', () => { undoFn(); t.remove(); });
+    c.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(40px)'; setTimeout(() => t.remove(), 400); }, 5000);
+  },
+
+  toastWithAction(msg, btnText, action) {
+    const c = document.getElementById('toast-container');
+    if (!c) return;
+    const t = document.createElement('div');
+    t.className = 'toast toast-with-action';
+    t.innerHTML = `<span>${this.esc(msg)}</span><button class="toast-action-btn">${this.esc(btnText)}</button>`;
+    t.querySelector('.toast-action-btn').addEventListener('click', () => { action(); t.remove(); });
+    c.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(40px)'; setTimeout(() => t.remove(), 400); }, 5000);
   },
 
   // ===== VIEWS =====

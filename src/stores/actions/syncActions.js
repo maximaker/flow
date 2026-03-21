@@ -76,6 +76,7 @@ export const syncActions = {
     localStorage.setItem('fb_labels', JSON.stringify(this.labels));
     localStorage.setItem('fb_theme', this.theme);
     localStorage.setItem('fb_notif_prefs', JSON.stringify(this.notifPrefs));
+    if (this.tourCompleted) localStorage.setItem('fb_tour_completed', '1');
     this._schedulePbSync();
   },
 

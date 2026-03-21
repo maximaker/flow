@@ -468,6 +468,15 @@
                   </div>
                 </div>
                 <div id="settings-appearance-content"></div>
+                <div class="settings-divider"></div>
+                <div class="settings-section-header">Help</div>
+                <div class="settings-row">
+                  <div class="settings-row-info">
+                    <strong>Take the product tour</strong>
+                    <span>Walk through the app features again at any time.</span>
+                  </div>
+                  <button class="btn-secondary btn-sm" onclick="app.restartTour()">Start tour</button>
+                </div>
               </div>
 
             </div><!-- /settings-panes -->
@@ -983,6 +992,24 @@
         <div class="shortcut-row"><kbd>Esc</kbd><span>Close panel</span></div>
       </div>
     </button>
+
+    <!-- Tour overlay (spotlight backdrop) -->
+    <div id="tour-overlay" class="tour-overlay"></div>
+
+    <!-- Tour tooltip -->
+    <div id="tour-tooltip" class="tour-tooltip">
+      <div class="tour-tooltip-header">
+        <span id="tour-step-label" class="tour-step-label">Step 1 of 6</span>
+        <button class="tour-skip-btn" onclick="app.skipTour()">Skip tour</button>
+      </div>
+      <h3 id="tour-title" class="tour-title"></h3>
+      <p id="tour-body" class="tour-body"></p>
+      <div id="tour-dots" class="tour-dots"></div>
+      <div class="tour-footer">
+        <button id="tour-prev" class="btn-secondary btn-sm" onclick="app.prevTourStep()">← Back</button>
+        <button id="tour-next" class="btn-primary btn-sm" onclick="app.nextTourStep()">Next →</button>
+      </div>
+    </div>
   </div>
 </template>
 
