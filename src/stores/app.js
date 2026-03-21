@@ -41,10 +41,11 @@ export const useAppStore = defineStore('app', {
     this.applyTheme();
 
     // Check auth first — loadData needs an authenticated session to succeed
-    if (pb.authStore.isValid) {
+    if (pb.authStore.isValid && pb.authStore.model) {
       this.currentUserId = pb.authStore.model.id;
       await this.startApp();
     } else {
+      pb.authStore.clear(); // Clear any stale/invalid token
       this.showLoginScreen();
     }
   },
@@ -89,12 +90,14 @@ export const useAppStore = defineStore('app', {
       await pb.collection('users').authWithPassword(email, password);
       this.currentUserId = pb.authStore.model.id;
       this.loginError = false;
-      await this.startApp();
     } catch(e) {
       this.loginError = true;
       const pwEl = document.getElementById('login-password');
       if (pwEl) { pwEl.classList.add('shake'); setTimeout(() => pwEl.classList.remove('shake'), 500); }
+      return;
     }
+    // Run startApp outside the auth try/catch so startup errors don't show a login error
+    await this.startApp();
   },
 
   logout() {
