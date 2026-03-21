@@ -34,6 +34,8 @@ export const useAppStore = defineStore('app', {
   // PocketBase sync state
   _pbSnapshot: {},
   _pbSyncTimer: null,
+  _pbSubs: [],       // unsubscribe functions from real-time subscriptions
+  _syncing: false,   // true while _syncToPb() is writing, prevents echo-handling own writes
   _changePwUserId: null,
   _settingsSection: 'users',
 
@@ -87,6 +89,7 @@ export const useAppStore = defineStore('app', {
     await nextTick();
     this.render();
     this.updateFaviconBadge();
+    this._subscribeToRealtime(); // start real-time sync (non-blocking)
   },
 
   showLoginScreen() { /* handled by Vue */ },
@@ -125,6 +128,9 @@ export const useAppStore = defineStore('app', {
     this.expandedTasks = [];
     this._pbSnapshot = {};
     if (this._pbSyncTimer) { clearTimeout(this._pbSyncTimer); this._pbSyncTimer = null; }
+    this._pbSubs.forEach(fn => { try { fn(); } catch {} });
+    this._pbSubs = [];
+    this._syncing = false;
     this.appStarted = false; // flips Vue back to <LoginScreen>
   },
 
@@ -284,6 +290,8 @@ export const useAppStore = defineStore('app', {
 
   async _syncToPb() {
     if (!pb.authStore.isValid) return;
+    this._syncing = true;
+    try {
     const snap = this._pbSnapshot || {};
 
     const collections = [
@@ -340,6 +348,9 @@ export const useAppStore = defineStore('app', {
     }
 
     this._pbSnapshot = this._snapshot();
+    } finally {
+      this._syncing = false;
+    }
   },
 
   // Sync boardColumns + templates to a PocketBase 'settings' collection (single 'global' record).
@@ -355,6 +366,76 @@ export const useAppStore = defineStore('app', {
     } catch(e) {
       // Record may not exist yet — try creating it
       try { await pb.collection('settings').create({ id: 'global', ...data }); } catch {}
+    }
+  },
+
+  // ===== REAL-TIME SUBSCRIPTIONS (A-03) =====
+  // Subscribes to all 5 collections after login so changes made in other
+  // browser tabs (or by other users) are reflected immediately without a
+  // full page reload.  We skip events that arrive while _syncToPb() is in
+  // flight (_syncing === true) to avoid processing echoes of our own writes.
+  async _subscribeToRealtime() {
+    const collections = [
+      {
+        name: 'users',
+        map: r => ({ id: r.id, name: r.name, email: r.email, role: r.role || 'user', color: r.color || '#7a7a7a' }),
+        store: 'users',
+      },
+      {
+        name: 'projects',
+        map: r => ({ id: r.id, name: r.name, color: r.color, description: r.description }),
+        store: 'projects',
+      },
+      {
+        name: 'tasks',
+        map: r => ({
+          id: r.id, title: r.title, description: r.description || '', status: r.status || 'todo',
+          projectId: r.projectId || '', assigneeId: r.assigneeId || '', dueDate: r.dueDate || '',
+          priority: r.priority || '', labelIds: r.labelIds || [], blockedBy: r.blockedBy || '',
+          order: r.order || 0, parentId: r.parentId || '', effort: r.effort || '',
+          deliverables: r.deliverables || [], attachments: r.attachments || [],
+          comments: r.comments || [], activityLog: r.activityLog || [],
+          createdAt: r.createdAt || r.created?.split(' ')[0] || '',
+        }),
+        store: 'tasks',
+      },
+      {
+        name: 'labels',
+        map: r => ({ id: r.id, name: r.name, color: r.color }),
+        store: 'labels',
+      },
+      {
+        name: 'notifications',
+        map: r => ({ id: r.id, type: r.type, text: r.text, taskId: r.taskId, read: r.read, timestamp: r.timestamp }),
+        store: 'notifications',
+      },
+    ];
+
+    for (const col of collections) {
+      try {
+        const unsub = await pb.collection(col.name).subscribe('*', (e) => {
+          if (this._syncing) return; // skip echo of our own writes
+          const arr = this[col.store];
+          const mapped = col.map(e.record);
+          if (e.action === 'create') {
+            if (!arr.find(x => x.id === mapped.id)) arr.push(mapped);
+          } else if (e.action === 'update') {
+            const idx = arr.findIndex(x => x.id === mapped.id);
+            if (idx !== -1) arr[idx] = mapped; else arr.push(mapped);
+          } else if (e.action === 'delete') {
+            const idx = arr.findIndex(x => x.id === e.record.id);
+            if (idx !== -1) arr.splice(idx, 1);
+          }
+          // Keep snapshot and localStorage in sync with the incoming change
+          this._pbSnapshot = this._snapshot();
+          localStorage.setItem(`fb_${col.store}`, JSON.stringify(this[col.store]));
+          this.render();
+          this.updateFaviconBadge();
+        });
+        this._pbSubs.push(unsub);
+      } catch(e) {
+        console.warn(`Real-time subscription failed for ${col.name}:`, e);
+      }
     }
   },
 
