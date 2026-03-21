@@ -758,6 +758,39 @@
       </div>
     </div>
 
+    <!-- Temp Password Modal (shown after creating a new member) -->
+    <div class="modal-overlay" id="temp-pw-modal-overlay">
+      <div class="modal" id="temp-pw-modal">
+        <div class="modal-header">
+          <h3>Member created</h3>
+          <button class="btn-icon" onclick="app.closeTempPwModal()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="temp-pw-intro">Share these login details with the new member. They should change their password after first login.</p>
+          <div class="temp-pw-field">
+            <label>Email</label>
+            <div class="temp-pw-row">
+              <code id="temp-pw-email"></code>
+              <button class="btn-secondary btn-sm" onclick="app.copyTempField('email')">Copy</button>
+            </div>
+          </div>
+          <div class="temp-pw-field">
+            <label>Temporary password</label>
+            <div class="temp-pw-row">
+              <code id="temp-pw-value"></code>
+              <button class="btn-secondary btn-sm" onclick="app.copyTempField('password')">Copy</button>
+            </div>
+          </div>
+          <p class="temp-pw-warning">This password will not be shown again.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-primary" onclick="app.closeTempPwModal()">Done</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Label Management Modal -->
     <div class="modal-overlay" id="label-modal-overlay">
       <div class="modal" id="label-modal">

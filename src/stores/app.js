@@ -677,7 +677,7 @@ export const useAppStore = defineStore('app', {
       </div>`).join('');
 
     const cu = this.getCurrentUser() || this.users[0];
-    if (cu) document.getElementById('current-user').innerHTML = `<div class="team-avatar" style="background:${cu.color}">${this.initials(cu.name)}</div><div style="min-width:0"><div style="font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px">${this.esc(cu.name)} ${this.getRoleBadge(cu.role)}</div></div><button class="btn-icon-sm" onclick="app.logout()" title="Sign out" style="margin-left:auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>`;
+    if (cu) document.getElementById('current-user').innerHTML = `<div class="team-avatar" style="background:${this.safeColor(cu.color)}">${this.initials(cu.name)}</div><div style="min-width:0"><div style="font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px">${this.esc(cu.name)} ${this.getRoleBadge(cu.role)}</div></div><button class="btn-icon-sm" onclick="app.logout()" title="Sign out" style="margin-left:auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>`;
     this.populateSelects();
   },
 
@@ -719,7 +719,7 @@ export const useAppStore = defineStore('app', {
     if (!el) return;
     el.innerHTML = this.labels.map(l => {
       const sel = selectedIds.includes(l.id);
-      return `<span class="label-chip ${sel ? 'selected' : ''}" style="background:${l.color}20;color:${l.color}" onclick="app.toggleLabelInPicker('${containerId}','${l.id}')" data-id="${l.id}">${this.esc(l.name)}</span>`;
+      return `<span class="label-chip ${sel ? 'selected' : ''}" style="background:${this.safeColor(l.color)}20;color:${this.safeColor(l.color)}" onclick="app.toggleLabelInPicker('${containerId}','${l.id}')" data-id="${l.id}">${this.esc(l.name)}</span>`;
     }).join('') + `<button class="add-label-btn" onclick="app.showLabelModal()">+ Manage</button>`;
   },
 
@@ -744,7 +744,7 @@ export const useAppStore = defineStore('app', {
   renderLabelTags(labelIds) {
     return (labelIds || []).map(id => {
       const l = this.labels.find(x => x.id === id);
-      return l ? `<span class="label-tag" style="background:${l.color}20;color:${l.color}">${this.esc(l.name)}</span>` : '';
+      return l ? `<span class="label-tag" style="background:${this.safeColor(l.color)}20;color:${this.safeColor(l.color)}">${this.esc(l.name)}</span>` : '';
     }).join('');
   },
 
@@ -757,7 +757,7 @@ export const useAppStore = defineStore('app', {
   renderLabelList() {
     document.getElementById('label-list-manage').innerHTML = this.labels.map(l => `
       <div class="label-manage-item">
-        <span class="label-tag" style="background:${l.color}20;color:${l.color}">${this.esc(l.name)}</span>
+        <span class="label-tag" style="background:${this.safeColor(l.color)}20;color:${this.safeColor(l.color)}">${this.esc(l.name)}</span>
         <button onclick="app.deleteLabel('${l.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>`).join('');
   },
@@ -1052,12 +1052,12 @@ export const useAppStore = defineStore('app', {
           <div class="task-list-right">
             ${si.total>0 ? `<span class="task-subtask-badge" title="${si.done} of ${si.total} subtasks completed">${si.done}/${si.total}</span>` : ''}
             ${ac>0 ? '<span class="task-attachment-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span>' : ''}
-            ${assignee ? `<div class="task-avatar-sm" style="background:${assignee.color}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
+            ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
           </div>
         </div>
         ${hasMeta ? `<div class="task-list-meta" style="padding-left:${indent + 20 + 16 + 18 + 24}px">
             ${showPriority ? this.priorityBadge(t.priority) : ''}
-            ${showProject && proj ? `<span class="task-list-project" style="background:${proj.color}20;color:${proj.color}">${this.esc(proj.name)}</span>` : ''}
+            ${showProject && proj ? `<span class="task-list-project" style="background:${this.safeColor(proj.color)}20;color:${this.safeColor(proj.color)}">${this.esc(proj.name)}</span>` : ''}
             ${t.dueDate ? `<span class="task-list-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}">${this.formatDate(t.dueDate)}</span>` : ''}
             ${t.dueDate && this.dueDateClass(t.dueDate) === 'overdue' && t.status !== 'done' ? `<button class="rescue-btn" onclick="event.stopPropagation();app.rescueTask('${t.id}')" title="Reschedule to today">\u2192 Today</button>` : ''}
             ${blocked ? '<span class="blocked-indicator">Blocked</span>' : ''}
@@ -1232,13 +1232,13 @@ export const useAppStore = defineStore('app', {
           onclick="app.handleBoardCardClick(event,'${t.id}')">
           <div class="card-top">
             <span class="card-title ${t.status==='done'?'completed':''}">${this.esc(t.title)}</span>
-            ${proj ? `<span class="card-project-tag" style="background:${proj.color}15;color:${proj.color}">${this.esc(proj.name)}</span>` : ''}
+            ${proj ? `<span class="card-project-tag" style="background:${this.safeColor(proj.color)}15;color:${this.safeColor(proj.color)}">${this.esc(proj.name)}</span>` : ''}
           </div>
           ${labelHtml}
           ${si.total>0 ? `<div class="card-subtask-bar"><div class="card-subtask-info"><span class="card-subtask-label">${si.done}/${si.total} subtasks</span><span class="card-subtask-label">${si.percent}%</span></div><div class="card-progress-track"><div class="card-progress-fill ${si.percent===100?'complete':''}" style="width:${si.percent}%"></div></div></div>` : ''}
           <div class="card-bottom">
             <div class="card-left">
-              ${assignee ? `<div class="card-avatar" style="background:${assignee.color}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
+              ${assignee ? `<div class="card-avatar" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
               ${t.dueDate ? `<span class="card-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${this.formatDateShort(t.dueDate)}</span>` : ''}
               ${this.priorityBadge(t.priority)}
               ${this.effortBadge(t.effort)}
@@ -1525,7 +1525,7 @@ export const useAppStore = defineStore('app', {
     el.innerHTML = this.users.map(u => `
       <div class="settings-user-row">
         <div class="settings-user-info">
-          <div class="team-avatar" style="background:${u.color}">${this.initials(u.name)}</div>
+          <div class="team-avatar" style="background:${this.safeColor(u.color)}">${this.initials(u.name)}</div>
           <div>
             <div class="settings-user-name">${this.esc(u.name)} ${this.getRoleBadge(u.role)}</div>
             <div class="settings-user-email">${this.esc(u.email || '')}</div>
@@ -1553,7 +1553,7 @@ export const useAppStore = defineStore('app', {
     el.innerHTML = this.labels.map(l => `
       <div class="settings-row">
         <div class="settings-label-info">
-          <span class="label-dot" style="background:${l.color}; width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:8px;"></span>
+          <span class="label-dot" style="background:${this.safeColor(l.color)}; width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:8px;"></span>
           <span>${this.esc(l.name)}</span>
         </div>
         <button class="btn-danger btn-sm" onclick="app.deleteLabel('${l.id}');app.renderSettingsLabels()">Delete</button>
@@ -1567,7 +1567,7 @@ export const useAppStore = defineStore('app', {
     if (!u) return;
     el.innerHTML = `
       <div class="settings-account-card">
-        <div class="settings-account-avatar" style="background:${u.color}">${this.initials(u.name)}</div>
+        <div class="settings-account-avatar" style="background:${this.safeColor(u.color)}">${this.initials(u.name)}</div>
         <div class="settings-account-details">
           <div class="settings-account-name">${this.esc(u.name)} ${this.getRoleBadge(u.role)}</div>
           <div class="settings-user-email">${this.esc(u.email || '')}</div>
@@ -1628,7 +1628,7 @@ export const useAppStore = defineStore('app', {
       const max = Math.max(todo + prog + done, 1);
 
       return `<div class="workload-row">
-        <div class="workload-user"><div class="team-avatar" style="background:${u.color}">${this.initials(u.name)}</div><span class="workload-user-name">${this.esc(u.name)}</span></div>
+        <div class="workload-user"><div class="team-avatar" style="background:${this.safeColor(u.color)}">${this.initials(u.name)}</div><span class="workload-user-name">${this.esc(u.name)}</span></div>
         <div class="workload-bars">
           <div class="workload-bar-row"><span class="workload-bar-label">To Do</span><div class="workload-bar-track"><div class="workload-bar-fill" style="width:${(todo/max)*100}%;background:var(--todo)"></div></div><span class="workload-bar-count">${todo}</span></div>
           <div class="workload-bar-row"><span class="workload-bar-label">In Progress</span><div class="workload-bar-track"><div class="workload-bar-fill" style="width:${(prog/max)*100}%;background:var(--progress)"></div></div><span class="workload-bar-count">${prog}</span></div>
@@ -2006,7 +2006,7 @@ export const useAppStore = defineStore('app', {
           ${this.priorityBadge(st.priority)}
           ${childCount > 0 ? `<span class="task-subtask-badge" title="${childDone} of ${childCount} subtasks completed">${childDone}/${childCount}</span>` : ''}
           ${st.dueDate ? `<span class="task-list-due ${this.dueDateClass(st.dueDate)}" title="${this.formatDateAbsolute(st.dueDate)}">${this.formatDate(st.dueDate)}</span>` : ''}
-          ${assignee ? `<div class="task-avatar-sm" style="background:${assignee.color}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
+          ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
         </div>
         <button class="subtask-delete" onclick="event.stopPropagation();app.deleteSubtask('${st.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>`;
@@ -2495,7 +2495,7 @@ export const useAppStore = defineStore('app', {
     let html = '';
     if (type === 'assignee') {
       html = this.users.map(u => `<div class="chip-dd-item ${u.id === task.assigneeId ? 'active' : ''}" onclick="app.setChipValue('assignee','${u.id}')">
-        <div class="chip-avatar" style="background:${u.color}">${this.initials(u.name)}</div> ${this.esc(u.name)}
+        <div class="chip-avatar" style="background:${this.safeColor(u.color)}">${this.initials(u.name)}</div> ${this.esc(u.name)}
       </div>`).join('');
       html += `<div class="chip-dd-item ${!task.assigneeId ? 'active' : ''}" onclick="app.setChipValue('assignee','')">Unassigned</div>`;
     } else if (type === 'project') {
@@ -2624,7 +2624,7 @@ export const useAppStore = defineStore('app', {
             ${si.total>0 ? `<div class="card-subtask-bar"><div class="card-subtask-info"><span class="card-subtask-label">${si.done}/${si.total} subtasks</span><span class="card-subtask-label">${si.percent}%</span></div><div class="card-progress-track"><div class="card-progress-fill ${si.percent===100?'complete':''}" style="width:${si.percent}%"></div></div></div>` : ''}
             <div class="card-bottom">
               <div class="card-left">
-                ${assignee ? `<div class="card-avatar" style="background:${assignee.color}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
+                ${assignee ? `<div class="card-avatar" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
                 ${t.dueDate ? `<span class="card-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${this.formatDateShort(t.dueDate)}</span>` : ''}
                 ${this.priorityBadge(t.priority)}
                 ${this.effortBadge(t.effort)}
@@ -2669,7 +2669,7 @@ export const useAppStore = defineStore('app', {
         return `<div class="timeline-row" onclick="app.openTask('${t.id}')" style="cursor:pointer">
           <div class="timeline-task-info">
             <span class="timeline-task-name ${t.status==='done'?'completed':''}">${this.esc(t.title)}</span>
-            ${assignee ? `<div class="task-avatar-sm" style="background:${assignee.color}">${this.initials(assignee.name)}</div>` : ''}
+            ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}">${this.initials(assignee.name)}</div>` : ''}
           </div>
           <div class="timeline-bar-area">
             <span class="task-list-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}">${this.formatDate(t.dueDate)}</span>
@@ -2721,12 +2721,12 @@ export const useAppStore = defineStore('app', {
           <div class="task-list-right">
             ${si.total>0 ? `<span class="task-subtask-badge" title="${si.done} of ${si.total} subtasks completed">${si.done}/${si.total}</span>` : ''}
             ${ac>0 ? '<span class="task-attachment-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span>' : ''}
-            ${assignee ? `<div class="task-avatar-sm" style="background:${assignee.color}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
+            ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
           </div>
         </div>
         ${hasMeta ? `<div class="task-list-meta" style="padding-left:${indent + 20 + 16 + 18 + 24}px">
             ${showPriority ? this.priorityBadge(t.priority) : ''}
-            ${showProject && proj2 ? `<span class="task-list-project" style="background:${proj2.color}20;color:${proj2.color}">${this.esc(proj2.name)}</span>` : ''}
+            ${showProject && proj2 ? `<span class="task-list-project" style="background:${this.safeColor(proj2.color)}20;color:${this.safeColor(proj2.color)}">${this.esc(proj2.name)}</span>` : ''}
             ${t.dueDate ? `<span class="task-list-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}">${this.formatDate(t.dueDate)}</span>` : ''}
             ${t.dueDate && this.dueDateClass(t.dueDate) === 'overdue' && t.status !== 'done' ? `<button class="rescue-btn" onclick="event.stopPropagation();app.rescueTask('${t.id}')" title="Reschedule to today">\u2192 Today</button>` : ''}
             ${showEffort ? this.effortBadge(t.effort) : ''}
@@ -2793,12 +2793,29 @@ export const useAppStore = defineStore('app', {
         this.users.push({ id: record.id, name, email, role, color });
         this.save(); this.closeUserModal(); this.render();
         if (this.currentView === 'settings') this.renderSettingsUsers();
-        this.toast('Member added — share temp password with them', 'success');
-        alert(`New member created!\nEmail: ${email}\nTemporary password: ${tempPass}\n\nPlease share this with them so they can log in and change it.`);
+        this.showTempPwModal(email, tempPass);
       } catch(e) {
         this.toast('Failed to create member: ' + (e.message || 'unknown error'), 'error');
       }
     }
+  },
+
+  showTempPwModal(email, password) {
+    this._tempPwEmail = email;
+    this._tempPwPassword = password;
+    document.getElementById('temp-pw-email').textContent = email;
+    document.getElementById('temp-pw-value').textContent = password;
+    document.getElementById('temp-pw-modal-overlay').classList.add('show');
+  },
+  closeTempPwModal() {
+    document.getElementById('temp-pw-modal-overlay')?.classList.remove('show');
+    this._tempPwEmail = null;
+    this._tempPwPassword = null;
+  },
+  copyTempField(field) {
+    const text = field === 'email' ? this._tempPwEmail : this._tempPwPassword;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => this.toast('Copied to clipboard'));
   },
 
   async deleteUser(id) {
@@ -3189,6 +3206,14 @@ export const useAppStore = defineStore('app', {
 
   // ===== UTILITIES =====
   esc(str) { const d = document.createElement('div'); d.textContent = str||''; return d.innerHTML; },
+  // Sanitise user-defined colour values before injecting into style= attributes.
+  // Accepts #rrggbb, #rgb, rgb(...), rgba(...) — returns fallback for anything else.
+  safeColor(c, fallback = '#7a7a7a') {
+    if (!c) return fallback;
+    if (/^#[0-9a-fA-F]{3,8}$/.test(c)) return c;
+    if (/^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}/.test(c)) return c;
+    return fallback;
+  },
   initials(name) { return name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2) : '?'; },
   formatDate(ds) {
     if (!ds) return '';
@@ -3569,7 +3594,7 @@ export const useAppStore = defineStore('app', {
     const filtered = this.users.filter(u => u.name.toLowerCase().includes(this._mentionQuery));
     if (!filtered.length) { this.hideMentions(); return; }
     this._mentionIdx = Math.min(this._mentionIdx, filtered.length - 1);
-    dd.innerHTML = filtered.map((u, i) => `<div class="mention-item ${i === this._mentionIdx ? 'active' : ''}" data-name="${this.esc(u.name)}" onclick="app.insertMention('${this.esc(u.name)}')"><div class="team-avatar" style="background:${u.color};width:22px;height:22px;font-size:9px">${this.initials(u.name)}</div>${this.esc(u.name)}</div>`).join('');
+    dd.innerHTML = filtered.map((u, i) => `<div class="mention-item ${i === this._mentionIdx ? 'active' : ''}" data-name="${this.esc(u.name)}" onclick="app.insertMention('${this.esc(u.name)}')"><div class="team-avatar" style="background:${this.safeColor(u.color)};width:22px;height:22px;font-size:9px">${this.initials(u.name)}</div>${this.esc(u.name)}</div>`).join('');
     // Position near textarea
     const rect = textarea.getBoundingClientRect();
     dd.style.left = rect.left + 'px';
