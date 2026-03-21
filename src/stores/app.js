@@ -40,17 +40,10 @@ export const useAppStore = defineStore('app', {
     this.theme = localStorage.getItem('fb_theme') || 'light';
     this.applyTheme();
 
-    await this.loadData();
-    if (!this.users.length) this.seedData();
-    // Prefer PocketBase settings (shared across devices) over localStorage
-    this.boardColumns = this._pbBoardColumns ||
-      JSON.parse(localStorage.getItem('fb_board_columns') || 'null') ||
-      [{id:'todo',name:'To Do'},{id:'in-progress',name:'In Progress'},{id:'done',name:'Done'}];
-
-    // Check PocketBase auth session
+    // Check auth first — loadData needs an authenticated session to succeed
     if (pb.authStore.isValid) {
       this.currentUserId = pb.authStore.model.id;
-      this.startApp();
+      await this.startApp();
     } else {
       this.showLoginScreen();
     }
@@ -62,7 +55,15 @@ export const useAppStore = defineStore('app', {
     return Array.from({length: 15}, () => c[Math.floor(Math.random() * c.length)]).join('');
   },
 
-  startApp() {
+  async startApp() {
+    // Load real data now that we are authenticated
+    await this.loadData();
+    if (!this.users.length) this.seedData();
+    // Prefer PocketBase settings (shared across devices) over localStorage
+    this.boardColumns = this._pbBoardColumns ||
+      JSON.parse(localStorage.getItem('fb_board_columns') || 'null') ||
+      [{id:'todo',name:'To Do'},{id:'in-progress',name:'In Progress'},{id:'done',name:'Done'}];
+
     this.appStarted = true; // signals Vue to show AppShell
     this.recentTasks = JSON.parse(localStorage.getItem('fb_recent_tasks') || '[]');
     this.loadTreeState();
@@ -88,7 +89,7 @@ export const useAppStore = defineStore('app', {
       await pb.collection('users').authWithPassword(email, password);
       this.currentUserId = pb.authStore.model.id;
       this.loginError = false;
-      this.startApp();
+      await this.startApp();
     } catch(e) {
       this.loginError = true;
       const pwEl = document.getElementById('login-password');
