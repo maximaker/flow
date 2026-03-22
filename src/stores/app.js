@@ -336,6 +336,74 @@ export const useAppStore = defineStore('app', {
     this.renderMyTasks();
   },
 
+  // ===== BULK SELECTION =====
+  updateBulkBar() {
+    const bar = document.getElementById('bulk-bar');
+    const countEl = document.getElementById('bulk-count-num');
+    if (!bar) return;
+    const n = this.selectedTasks.length;
+    bar.classList.toggle('show', n > 0);
+    if (countEl) countEl.textContent = n;
+  },
+
+  toggleSelect(taskId) {
+    if (this.selectedTasks.includes(taskId)) {
+      this.selectedTasks = this.selectedTasks.filter(id => id !== taskId);
+    } else {
+      this.selectedTasks.push(taskId);
+    }
+    this.updateBulkBar();
+    // Re-render to update checkbox state
+    if (this.currentView === 'my-tasks') this.renderMyTasks();
+    if (this.currentView === 'board') this.renderBoard();
+  },
+
+  clearSelection() {
+    this.selectedTasks = [];
+    this.updateBulkBar();
+  },
+
+  bulkMove(status) {
+    if (!this.selectedTasks.length) return;
+    const count = this.selectedTasks.length;
+    this.selectedTasks.forEach(id => {
+      const task = this.tasks.find(t => t.id === id);
+      if (task) task.status = status;
+    });
+    this.save();
+    this.clearSelection();
+    this.render();
+    this.toast(`Moved ${count} task${count !== 1 ? 's' : ''} to ${status.replace('-', ' ')}`);
+  },
+
+  bulkDelete() {
+    if (!this.selectedTasks.length) return;
+    const count = this.selectedTasks.length;
+    this.tasks = this.tasks.filter(t => !this.selectedTasks.includes(t.id));
+    this.save();
+    this.clearSelection();
+    this.render();
+    this.toast(`Deleted ${count} task${count !== 1 ? 's' : ''}`);
+  },
+
+  showBulkAssign() {
+    // Simple: assign all selected tasks to a picked user
+    // For now, open the task modal on the first selected task as a fallback
+    if (!this.selectedTasks.length) return;
+    const userId = prompt('Enter user name to assign (quick assign):');
+    if (!userId) return;
+    const user = this.users.find(u => u.name.toLowerCase().includes(userId.toLowerCase()));
+    if (!user) { this.toast('User not found', 'error'); return; }
+    this.selectedTasks.forEach(id => {
+      const task = this.tasks.find(t => t.id === id);
+      if (task) task.assigneeId = user.id;
+    });
+    this.save();
+    this.clearSelection();
+    this.render();
+    this.toast(`Assigned to ${user.name}`);
+  },
+
   // ===== TOAST NOTIFICATIONS =====
   toast(msg, type = '') {
     const c = document.getElementById('toast-container');
