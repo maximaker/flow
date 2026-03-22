@@ -74,6 +74,11 @@ export const authActions = {
     }
   },
 
+  _handleSessionExpired() {
+    this.toast('Your session has expired. Please sign in again.', 'error')
+    setTimeout(() => this.logout(), 1500)
+  },
+
   logout() {
     pb.authStore.clear();
     this.users = []; this.projects = []; this.tasks = [];

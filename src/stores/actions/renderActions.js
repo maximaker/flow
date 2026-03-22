@@ -14,9 +14,11 @@ export const renderActions = {
 
     const hour = new Date().getHours();
     const dayOfWeek = new Date().getDay();
-    document.getElementById('greeting-time').textContent = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+    const greetTimeEl = document.getElementById('greeting-time');
+    if (greetTimeEl) greetTimeEl.textContent = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
     const curUser = this.getCurrentUser();
-    document.getElementById('greeting-name').textContent = curUser?.name?.split(' ')[0] || 'User';
+    const greetNameEl = document.getElementById('greeting-name');
+    if (greetNameEl) greetNameEl.textContent = curUser?.name?.split(' ')[0] || 'User';
 
     // Contextual subtitle
     const myPending = this.tasks.filter(t => t.assigneeId === this.currentUserId && t.status !== 'done');
@@ -84,7 +86,7 @@ export const renderActions = {
     };
 
     const hasAnyFocus = myUrgent.length > 0 || myWeek.length > 0;
-    if (hasAnyFocus) {
+    if (hasAnyFocus && focusEl) {
       focusEl.classList.remove('hidden');
       // Today tab
       focusListEl.innerHTML = myUrgent.length
@@ -852,7 +854,7 @@ export const renderActions = {
   renderNotifications() {
     const badge = document.getElementById('notification-badge');
     const unread = this.notifications.filter(n => !n.read).length;
-    badge.textContent = unread; badge.style.display = unread > 0 ? 'flex' : 'none';
+    if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'flex' : 'none'; }
     const icons = { deadline: '<div class="notif-icon deadline">&#9200;</div>', assign: '<div class="notif-icon assign">&#128100;</div>', comment: '<div class="notif-icon comment">&#128172;</div>' };
     document.getElementById('notification-list').innerHTML = this.notifications.length ? this.notifications.map(n => `
       <div class="notif-item ${n.read?'':'unread'}" onclick="app.readNotification('${n.id}')">
@@ -1100,6 +1102,12 @@ export const renderActions = {
   },
 
   _observeStatCards() {
+    // Guard: only create one observer and wrap renderHome once across all calls
+    if (this._statObserver) {
+      this._statObserverTryObserve?.();
+      return;
+    }
+
     const observer = new MutationObserver((mutations) => {
       mutations.forEach(m => {
         if (m.target.classList?.contains('stat-value')) {
@@ -1124,6 +1132,9 @@ export const renderActions = {
         }
       });
     });
+
+    this._statObserver = observer;
+
     // Observe stat values when they appear
     const tryObserve = () => {
       document.querySelectorAll('.stat-value').forEach(el => {
@@ -1134,8 +1145,10 @@ export const renderActions = {
         }
       });
     };
+    this._statObserverTryObserve = tryObserve;
+
     tryObserve();
-    // Re-observe on render
+    // Re-observe on render — wrap renderHome ONCE
     const origRender = this.renderHome.bind(this);
     this.renderHome = (...args) => { origRender(...args); setTimeout(tryObserve, 10); };
   },

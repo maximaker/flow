@@ -48,6 +48,11 @@ export const useAppStore = defineStore('app', {
   _changePwUserId: null,
   _settingsSection: 'users',
 
+  // Sync health — surfaced in the topbar indicator
+  // 'idle' | 'syncing' | 'error' | 'offline'
+  _syncStatus: 'idle',
+  _syncError: null,
+
   // Feature: Onboarding tour
   tourActive: false,
   tourStep: 0,

@@ -3,6 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!--
+    Content Security Policy
+    - script-src 'unsafe-inline' required: app uses inline onclick handlers in v-html rendered content.
+    - connect-src allows https: and wss: for PocketBase REST + realtime.
+    - frame-ancestors 'none' prevents clickjacking.
+    - object-src 'none' blocks Flash/plugin-based attacks.
+    - base-uri 'self' prevents base-tag injection.
+  -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 script-src 'self' 'unsafe-inline';
+                 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+                 font-src https://fonts.gstatic.com data:;
+                 img-src 'self' data: blob: https:;
+                 connect-src 'self' https: wss:;
+                 frame-ancestors 'none';
+                 object-src 'none';
+                 base-uri 'self';">
   <title>Flow — Project Management</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">

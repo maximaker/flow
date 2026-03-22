@@ -1,17 +1,32 @@
 <template>
   <div>
-    <LoginScreen v-if="!loggedIn" />
-    <AppShell v-else />
+    <!-- Init error boundary: shown when store.init() throws unrecoverably -->
+    <div v-if="initError" class="init-error-boundary">
+      <div class="init-error-card">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <h2>Something went wrong</h2>
+        <p>Flow couldn't start up. This is usually a connection issue.</p>
+        <p class="init-error-detail">{{ initError }}</p>
+        <button class="btn-primary" @click="retryInit">Try again</button>
+      </div>
+    </div>
+    <template v-else>
+      <LoginScreen v-if="!loggedIn" />
+      <AppShell v-else />
+    </template>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useAppStore } from './stores/app.js'
 import LoginScreen from './components/LoginScreen.vue'
 import AppShell from './components/AppShell.vue'
 
 const store = useAppStore()
+const initError = ref(null)
 
 // Expose a restricted proxy globally so v-html onclick="app.xxx()" handlers work.
 // The proxy forwards ALL function properties (bound to store) but hides raw state
@@ -37,5 +52,19 @@ window.app = new Proxy(store, {
 
 const loggedIn = computed(() => store.currentUserId !== null && store.appStarted)
 
-onMounted(() => store.init())
+async function runInit() {
+  initError.value = null
+  try {
+    await store.init()
+  } catch (e) {
+    console.error('[Flow] init() failed:', e)
+    initError.value = e?.message || 'Unknown error'
+  }
+}
+
+function retryInit() {
+  runInit()
+}
+
+onMounted(runInit)
 </script>

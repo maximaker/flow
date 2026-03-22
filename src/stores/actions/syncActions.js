@@ -95,9 +95,39 @@ export const syncActions = {
     this._pbSyncTimer = setTimeout(() => this._syncToPb(), 800);
   },
 
+  _setSyncStatus(status, errorMsg = null) {
+    this._syncStatus = status;
+    this._syncError = errorMsg;
+    const el = document.getElementById('sync-status');
+    if (!el) return;
+    if (status === 'syncing') {
+      el.className = 'sync-status syncing';
+      el.textContent = 'Syncing…';
+      el.style.display = '';
+    } else if (status === 'error') {
+      el.className = 'sync-status error';
+      el.title = errorMsg || 'Sync failed';
+      el.textContent = 'Sync error';
+      el.style.display = '';
+    } else if (status === 'offline') {
+      el.className = 'sync-status offline';
+      el.textContent = 'Offline — changes saved locally';
+      el.style.display = '';
+    } else {
+      el.style.display = 'none';
+    }
+  },
+
+  _isAuthError(e) {
+    return e?.status === 401 || e?.status === 403 ||
+      String(e?.message).includes('401') || String(e?.message).includes('not authenticated');
+  },
+
   async _syncToPb() {
     if (!pb.authStore.isValid) return;
     this._syncing = true;
+    this._setSyncStatus('syncing');
+    let hadError = false;
     try {
       const snap = this._pbSnapshot || {};
       const collections = [
@@ -125,14 +155,26 @@ export const syncActions = {
         for (const item of curr) {
           const was = prev.find(p => p.id === item.id);
           if (!was) {
-            try { await pb.collection(col.name).create({ id: item.id, ...col.toRecord(item) }); } catch (e) { console.warn(`PB create ${col.name}:`, e.message); }
+            try { await pb.collection(col.name).create({ id: item.id, ...col.toRecord(item) }); }
+            catch (e) {
+              if (this._isAuthError(e)) { this._handleSessionExpired(); return; }
+              hadError = true; console.warn(`PB create ${col.name}:`, e.message);
+            }
           } else if (JSON.stringify(item) !== JSON.stringify(was)) {
-            try { await pb.collection(col.name).update(item.id, col.toRecord(item)); } catch (e) { console.warn(`PB update ${col.name}:`, e.message); }
+            try { await pb.collection(col.name).update(item.id, col.toRecord(item)); }
+            catch (e) {
+              if (this._isAuthError(e)) { this._handleSessionExpired(); return; }
+              hadError = true; console.warn(`PB update ${col.name}:`, e.message);
+            }
           }
         }
         for (const item of prev) {
           if (!curr.find(c => c.id === item.id)) {
-            try { await pb.collection(col.name).delete(item.id); } catch (e) { console.warn(`PB delete ${col.name}:`, e.message); }
+            try { await pb.collection(col.name).delete(item.id); }
+            catch (e) {
+              if (this._isAuthError(e)) { this._handleSessionExpired(); return; }
+              hadError = true; console.warn(`PB delete ${col.name}:`, e.message);
+            }
           }
         }
       }
@@ -140,10 +182,19 @@ export const syncActions = {
       for (const user of this.users) {
         const was = prevUsers.find(p => p.id === user.id);
         if (was && JSON.stringify(user) !== JSON.stringify(was)) {
-          try { await pb.collection('users').update(user.id, { name: user.name, email: user.email, role: user.role, color: user.color }); } catch (e) { console.warn('PB update user:', e.message); }
+          try { await pb.collection('users').update(user.id, { name: user.name, email: user.email, role: user.role, color: user.color }); }
+          catch (e) {
+            if (this._isAuthError(e)) { this._handleSessionExpired(); return; }
+            hadError = true; console.warn('PB update user:', e.message);
+          }
         }
       }
       this._pbSnapshot = this._snapshot();
+      this._setSyncStatus(hadError ? 'error' : 'idle', hadError ? 'Some changes failed to sync' : null);
+    } catch (e) {
+      const isOffline = !navigator.onLine || e?.message?.includes('Failed to fetch') || e?.message?.includes('NetworkError');
+      this._setSyncStatus(isOffline ? 'offline' : 'error', e?.message);
+      console.warn('PB sync failed:', e.message);
     } finally {
       this._syncing = false;
     }
