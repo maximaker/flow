@@ -772,4 +772,137 @@ export const taskActions = {
     document.querySelectorAll('.panel-main-tab').forEach(t => t.classList.toggle('active', t.dataset.mtab === tabName));
     document.querySelectorAll('.panel-main-tab-content').forEach(c => c.classList.toggle('active', c.id === 'mtab-' + tabName));
   },
+
+  // ===== UNDO =====
+  pushUndo(label) {
+    this.undoStack = [{ label, tasks: JSON.parse(JSON.stringify(this.tasks)) }];
+  },
+
+  undo() {
+    if (!this.undoStack.length) { this.toast('Nothing to undo'); return; }
+    const snap = this.undoStack.pop();
+    this.tasks = snap.tasks;
+    this.save(); this.render();
+    this.toast('Undone: ' + snap.label, 'success');
+  },
+
+  // ===== SUGGEST NEXT TASK =====
+  suggestNextTask(completedTask) {
+    if (completedTask.parentId) {
+      const siblings = this.getChildren(completedTask.parentId).filter(t => t.id !== completedTask.id && t.status !== 'done');
+      if (siblings.length) return siblings[0];
+    }
+    const candidates = this.tasks.filter(t => t.assigneeId === this.currentUserId && t.status !== 'done' && t.id !== completedTask.id);
+    candidates.sort((a, b) => {
+      const pOrd = { p0: 0, p1: 1, p2: 2, p3: 3, '': 4 };
+      if ((pOrd[a.priority] ?? 4) !== (pOrd[b.priority] ?? 4)) return (pOrd[a.priority] ?? 4) - (pOrd[b.priority] ?? 4);
+      if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+      if (a.dueDate) return -1; return 1;
+    });
+    return candidates[0] || null;
+  },
+
+  // ===== TASK TEMPLATES =====
+  builtinTemplates: [
+    { name: 'Bug Report',        priority: 'p0', labelNames: ['Bug'],     subtasks: ['Reproduce', 'Fix', 'Test', 'Deploy'] },
+    { name: 'Feature Request',   priority: 'p2', labelNames: ['Feature'], subtasks: ['Design', 'Implement', 'Review', 'Test'] },
+    { name: 'Sprint Planning',   priority: '',   labelNames: [],           subtasks: ['Review backlog', 'Estimate', 'Assign', 'Set goals'] },
+    { name: 'Release Checklist', priority: '',   labelNames: [],           subtasks: ['Code freeze', 'QA', 'Staging deploy', 'Prod deploy', 'Monitor'] },
+  ],
+
+  saveTemplates() {
+    localStorage.setItem('fb_templates', JSON.stringify(this.templates));
+    if (this._syncSettings) this._syncSettings();
+  },
+
+  populateTemplateSelect() {
+    const sel = document.getElementById('template-select');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Use Template...</option>';
+    this.builtinTemplates.forEach((t, i) => { sel.innerHTML += `<option value="builtin_${i}">${this.esc(t.name)}</option>`; });
+    if (this.templates.length) {
+      sel.innerHTML += '<option disabled>── Custom ──</option>';
+      this.templates.forEach((t, i) => { sel.innerHTML += `<option value="custom_${i}">${this.esc(t.name)}</option>`; });
+    }
+  },
+
+  applyTemplate(val) {
+    if (!val) return;
+    let tmpl = null;
+    if (val.startsWith('builtin_')) tmpl = this.builtinTemplates[parseInt(val.split('_')[1])];
+    else if (val.startsWith('custom_')) tmpl = this.templates[parseInt(val.split('_')[1])];
+    if (!tmpl) return;
+    const nameEl = document.getElementById('modal-task-name');
+    if (nameEl) nameEl.value = tmpl.name || '';
+    const prioEl = document.getElementById('modal-task-priority');
+    if (prioEl) prioEl.value = tmpl.priority || '';
+    const descEl = document.getElementById('modal-task-desc');
+    if (descEl) descEl.value = tmpl.description || '';
+    if (tmpl.labelNames?.length) {
+      tmpl.labelNames.forEach(lname => {
+        const label = this.labels.find(l => l.name.toLowerCase() === lname.toLowerCase());
+        if (label) { const chip = document.querySelector(`#modal-task-labels [data-id="${label.id}"]`); if (chip) chip.classList.add('selected'); }
+      });
+    }
+    this._pendingSubtasks = tmpl.subtasks || [];
+    const tplSel = document.getElementById('template-select');
+    if (tplSel) tplSel.value = '';
+    this.toast('Template applied', 'success');
+  },
+
+  saveAsTemplate() {
+    const nameEl = document.getElementById('modal-task-name');
+    const name = nameEl?.value.trim();
+    if (!name) { this.toast('Enter a task name first', 'error'); return; }
+    const priority = document.getElementById('modal-task-priority')?.value || '';
+    const description = document.getElementById('modal-task-desc')?.value || '';
+    const labelIds = this.getSelectedLabels ? this.getSelectedLabels('modal-task-labels') : [];
+    const labelNames = labelIds.map(id => this.labels.find(l => l.id === id)?.name).filter(Boolean);
+    this.templates.push({ name, priority, description, labelNames, subtasks: [] });
+    this.saveTemplates();
+    this.toast('Template saved', 'success');
+  },
+
+  // ===== QUICK ADD =====
+  quickAdd(text) {
+    if (!text.trim()) return;
+    let title = text, assigneeId = this.currentUserId, projectId = '', priority = '', dueDate = '';
+    const labelIds = [];
+
+    // Extract priority
+    if (/\b(urgent|critical)\b/i.test(title)) { priority = 'p0'; title = title.replace(/\b(urgent|critical)\b/i, ''); }
+    else if (/\bhigh\s*(pri|priority)?\b/i.test(title)) { priority = 'p1'; title = title.replace(/\bhigh\s*(pri|priority)?\b/i, ''); }
+    else if (/\bmedium\s*(pri|priority)?\b/i.test(title)) { priority = 'p2'; title = title.replace(/\bmedium\s*(pri|priority)?\b/i, ''); }
+    else if (/\blow\s*(pri|priority)?\b/i.test(title)) { priority = 'p3'; title = title.replace(/\blow\s*(pri|priority)?\b/i, ''); }
+    else { const prioMatch = title.match(/\b(p[0-3])\b/i); if (prioMatch) { priority = prioMatch[1].toLowerCase(); title = title.replace(/\bp[0-3]\b/i, ''); } }
+
+    // Extract project @mention
+    const projMatch = title.match(/@([\w\s]+?)(?=\s+(?:by|due|for|urgent|high|low|medium|assign|$)|\s*$)/i);
+    if (projMatch) { const pName = projMatch[1].trim().toLowerCase(); const proj = this.projects.find(p => p.name.toLowerCase().includes(pName)); if (proj) { projectId = proj.id; title = title.replace(/@[\w\s]+?(?=\s+(?:by|due|for|urgent|high|low|medium|assign|$)|\s*$)/i, ''); } }
+    if (!projectId) { const hashMatch = title.match(/#([\w-]+)/); if (hashMatch) { const pname = hashMatch[1].toLowerCase().replace(/-/g, ' '); const proj = this.projects.find(p => p.name.toLowerCase().includes(pname)); if (proj) { projectId = proj.id; title = title.replace(/#[\w-]+/, ''); } } }
+
+    // Extract assignee
+    const assignMatch = title.match(/\b(?:for|assign\s+to)\s+(\w+)\b/i);
+    if (assignMatch) { const aName = assignMatch[1].toLowerCase(); const user = this.users.find(u => u.name.toLowerCase().split(' ')[0] === aName); if (user) { assigneeId = user.id; title = title.replace(/\b(?:for|assign\s+to)\s+\w+\b/i, ''); } }
+
+    // Extract due date
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (/\b(by |due )?(today)\b/i.test(title)) { dueDate = today.toISOString().split('T')[0]; title = title.replace(/\b(by |due )?(today)\b/i, ''); }
+    else if (/\b(by |due )?(tomorrow)\b/i.test(title)) { const d = new Date(today); d.setDate(d.getDate()+1); dueDate = d.toISOString().split('T')[0]; title = title.replace(/\b(by |due )?(tomorrow)\b/i, ''); }
+    else if (/\b(by |due )?(next week)\b/i.test(title)) { const d = new Date(today); d.setDate(d.getDate()+7); dueDate = d.toISOString().split('T')[0]; title = title.replace(/\b(by |due )?(next week)\b/i, ''); }
+    else { const dueMatch = title.match(/due\s+(today|tomorrow|\d{4}-\d{2}-\d{2})/i); if (dueMatch) { const val = dueMatch[1].toLowerCase(); const now = new Date(); if (val === 'today') dueDate = now.toISOString().split('T')[0]; else if (val === 'tomorrow') { now.setDate(now.getDate()+1); dueDate = now.toISOString().split('T')[0]; } else dueDate = val; title = title.replace(/due\s+\S+/i, ''); } }
+
+    // Parse labels
+    this.labels.forEach(l => { const re = new RegExp('\\b' + l.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i'); if (re.test(title)) { labelIds.push(l.id); title = title.replace(re, '').trim(); } });
+
+    title = title.replace(/\s+/g, ' ').trim();
+    if (!title) { this.toast('Please enter a task title'); return; }
+
+    if (!projectId && this.currentView === 'project' && this.selectedProjectId) projectId = this.selectedProjectId;
+    if (!projectId && this.projects.length === 1) projectId = this.projects[0].id;
+
+    this.tasks.push({ id: this.generateId(), title, description: '', status: 'todo', projectId, assigneeId, dueDate, priority, labelIds, blockedBy: [], order: this.tasks.filter(t => t.status === 'todo').length, parentId: '', deliverables: [], attachments: [], comments: [], activityLog: [{ text: 'Task created via quick add', timestamp: new Date().toISOString() }], createdAt: new Date().toISOString().split('T')[0] });
+    this.save(); this.render();
+    this.toast(`Task "${title}" created`, 'success');
+  },
 }

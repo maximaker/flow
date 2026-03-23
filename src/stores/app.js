@@ -473,6 +473,59 @@ export const useAppStore = defineStore('app', {
     }
   },
 
+  // ===== COMMAND PALETTE =====
+  openCommandPalette() {
+    const overlay = document.getElementById('cmd-overlay');
+    if (!overlay) return;
+    overlay.classList.add('show');
+    const input = document.getElementById('cmd-input');
+    if (input) { input.value = ''; input.focus(); }
+    this.cmdSelectedIndex = 0;
+    this.updateCommandResults();
+  },
+
+  closeCommandPalette() {
+    document.getElementById('cmd-overlay')?.classList.remove('show');
+  },
+
+  updateCommandResults() {
+    const q = (document.getElementById('cmd-input')?.value || '').toLowerCase();
+    const actions = [
+      { title: 'New Task',            desc: 'Create a new task',           action: () => { this.closeCommandPalette(); this.showTaskModal(); } },
+      { title: 'Toggle Dark Mode',    desc: 'Switch between light and dark', action: () => { this.closeCommandPalette(); this.toggleTheme(); } },
+      { title: 'Go to Board',         desc: 'Switch to board view',        action: () => { this.closeCommandPalette(); this.switchView('board'); } },
+      { title: 'Go to Timeline',      desc: 'Switch to timeline view',     action: () => { this.closeCommandPalette(); this.switchView('timeline'); } },
+      { title: 'Go to Analytics',     desc: 'View analytics',              action: () => { this.closeCommandPalette(); this.switchView('analytics'); } },
+      { title: 'Go to Workload',      desc: 'View team workload',          action: () => { this.closeCommandPalette(); this.switchView('workload'); } },
+      { title: 'Manage Labels',       desc: 'Add or remove labels',        action: () => { this.closeCommandPalette(); this.showLabelModal(); } },
+      { title: 'New Project',         desc: 'Create a new project',        action: () => { this.closeCommandPalette(); this.showProjectModal(); } },
+    ];
+    const taskResults  = this.tasks.filter(t => !q || t.title.toLowerCase().includes(q)).slice(0,8).map(t => ({ title: t.title, desc: this.projects.find(p => p.id === t.projectId)?.name || '', type: 'task',    action: () => { this.closeCommandPalette(); this.openTask(t.id); } }));
+    const projResults  = this.projects.filter(p => !q || p.name.toLowerCase().includes(q)).map(p => ({ title: p.name, desc: 'Project', type: 'project', action: () => { this.closeCommandPalette(); this.selectProject(p.id); } }));
+    const userResults  = this.users.filter(u => !q || u.name.toLowerCase().includes(q)).map(u => ({ title: u.name, desc: u.role, type: 'user', action: () => this.closeCommandPalette() }));
+    const actionResults = actions.filter(a => !q || a.title.toLowerCase().includes(q) || a.desc.toLowerCase().includes(q)).map(a => ({ ...a, type: 'action' }));
+    const results = [...actionResults, ...taskResults, ...projResults, ...userResults].slice(0, 12);
+    this._cmdResults = results;
+    this.cmdSelectedIndex = Math.min(this.cmdSelectedIndex, Math.max(0, results.length - 1));
+    const icons = { task: '<div class="cmd-item-icon task">T</div>', project: '<div class="cmd-item-icon project">P</div>', action: '<div class="cmd-item-icon action">&#9889;</div>', user: '<div class="cmd-item-icon user">U</div>' };
+    const el = document.getElementById('cmd-results');
+    if (el) el.innerHTML = results.length ? results.map((r, i) => `<div class="cmd-item ${i === this.cmdSelectedIndex ? 'active' : ''}" onmouseenter="app.cmdSelectedIndex=${i};app.highlightCmd()" onclick="app._cmdResults[${i}].action()">${icons[r.type]||icons.action}<div class="cmd-item-info"><div class="cmd-item-title">${this.esc(r.title)}</div>${r.desc ? `<div class="cmd-item-desc">${this.esc(r.desc)}</div>` : ''}</div></div>`).join('') : '<div class="empty-state" style="padding:30px"><p>No results</p></div>';
+  },
+
+  cmdNavigate(dir) {
+    this.cmdSelectedIndex = Math.max(0, Math.min((this._cmdResults||[]).length - 1, this.cmdSelectedIndex + dir));
+    this.highlightCmd();
+  },
+
+  highlightCmd() {
+    document.querySelectorAll('.cmd-item').forEach((el, i) => el.classList.toggle('active', i === this.cmdSelectedIndex));
+    document.querySelector('.cmd-item.active')?.scrollIntoView({ block: 'nearest' });
+  },
+
+  cmdSelect() {
+    if (this._cmdResults?.[this.cmdSelectedIndex]) this._cmdResults[this.cmdSelectedIndex].action();
+  },
+
   renderSidebar() {
     const pl = document.getElementById('project-list');
     pl.innerHTML = this.projects.length
@@ -491,6 +544,26 @@ export const useAppStore = defineStore('app', {
     const cu = this.getCurrentUser() || this.users[0];
     if (cu) document.getElementById('current-user').innerHTML = `<div class="team-avatar" style="background:${this.safeColor(cu.color)}">${this.initials(cu.name)}</div><div style="min-width:0"><div style="font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px">${this.esc(cu.name)} ${this.getRoleBadge(cu.role)}</div></div><button class="btn-icon-sm" onclick="app.logout()" title="Sign out" style="margin-left:auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>`;
     this.populateSelects();
+  },
+
+  populateStatusSelects() {
+    ['panel-status', 'modal-task-status', 'filter-status'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const val = el.value;
+      const isFilter = id === 'filter-status';
+      el.innerHTML = (isFilter ? '<option value="">All Status</option>' : '') +
+        this.boardColumns.map(c => `<option value="${c.id}">${this.esc(c.name)}</option>`).join('');
+      el.value = val;
+    });
+  },
+
+  populatePanelStatusFromColumns() {
+    const el = document.getElementById('panel-status');
+    if (!el) return;
+    const val = el.value;
+    el.innerHTML = this.boardColumns.map(c => `<option value="${c.id}">${this.esc(c.name)}</option>`).join('');
+    el.value = val;
   },
 
   populateSelects() {

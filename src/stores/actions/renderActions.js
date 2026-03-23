@@ -319,6 +319,26 @@ export const renderActions = {
     localStorage.setItem('fb_expanded_tasks', JSON.stringify(this.expandedTasks));
   },
 
+  loadSortPref() {
+    try {
+      const saved = localStorage.getItem('fb_sort_pref');
+      if (saved) this.sortPref = saved;
+    } catch { /* ignore */ }
+  },
+
+  saveSortPref() {
+    try {
+      localStorage.setItem('fb_sort_pref', this.sortPref || 'status');
+    } catch { /* ignore */ }
+  },
+
+  loadTemplates() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('fb_templates') || 'null');
+      if (Array.isArray(saved)) this.templates = saved;
+    } catch { this.templates = []; }
+  },
+
   // ===== LIST DRAG & DROP (reparenting across tree) =====
   draggedListTaskId: null,
 
@@ -1151,5 +1171,312 @@ export const renderActions = {
     // Re-observe on render — wrap renderHome ONCE
     const origRender = this.renderHome.bind(this);
     this.renderHome = (...args) => { origRender(...args); setTimeout(tryObserve, 10); };
+  },
+
+  // ===== NAV BADGES =====
+  renderNavBadges() {
+    const taskBadge = document.getElementById('nav-badge-tasks');
+    const boardBadge = document.getElementById('nav-badge-board');
+    if (taskBadge) {
+      const count = this.tasks.filter(t => t.status !== 'done' && this.isRootTask(t)).length;
+      taskBadge.textContent = count;
+      taskBadge.classList.toggle('visible', count > 0);
+    }
+    if (boardBadge) {
+      const count = this.tasks.filter(t => t.status === 'in-progress' && this.isRootTask(t)).length;
+      boardBadge.textContent = count;
+      boardBadge.classList.toggle('visible', count > 0);
+    }
+  },
+
+  // ===== BREADCRUMB =====
+  renderBreadcrumb() {
+    const bc = document.getElementById('breadcrumb');
+    if (!bc) return;
+    let html = '';
+    const titles = { home: 'Home', 'my-tasks': 'My Tasks', board: 'Board', timeline: 'Timeline', analytics: 'Analytics', workload: 'Workload', project: 'Project' };
+    let projName = '';
+    if (this.currentView === 'project') {
+      const p = this.projects.find(x => x.id === this.selectedProjectId);
+      if (p) projName = p.name;
+    } else if (this.currentView === 'my-tasks') {
+      const fProj = document.getElementById('filter-project')?.value;
+      if (fProj) { const p = this.projects.find(x => x.id === fProj); if (p) projName = p.name; }
+    } else if (this.currentView === 'board') {
+      const fProj = document.getElementById('board-project-select')?.value;
+      if (fProj) { const p = this.projects.find(x => x.id === fProj); if (p) projName = p.name; }
+    }
+    if (projName) {
+      html = `<a onclick="app.switchView('${this.currentView}')">${titles[this.currentView]}</a><span class="breadcrumb-sep">\u203A</span><span>${this.esc(projName)}</span>`;
+    }
+    if (this.currentTaskId) {
+      const task = this.tasks.find(t => t.id === this.currentTaskId);
+      if (task && task.parentId) {
+        const parent = this.tasks.find(t => t.id === task.parentId);
+        if (parent) {
+          html = `<span>Task</span><span class="breadcrumb-sep">\u203A</span><a onclick="app.openTask('${parent.id}')">${this.esc(parent.title)}</a><span class="breadcrumb-sep">\u203A</span><span>${this.esc(task.title)}</span>`;
+        }
+      }
+    }
+    bc.innerHTML = html;
+  },
+
+  // ===== TIMELINE DRAG =====
+  initTimelineDrag(barEl, taskId) {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    let tooltip = null;
+    const showTooltip = (text, x, y) => {
+      if (!tooltip) { tooltip = document.createElement('div'); tooltip.className = 'timeline-drag-tooltip'; document.body.appendChild(tooltip); }
+      tooltip.textContent = text; tooltip.style.left = x + 'px'; tooltip.style.top = (y - 30) + 'px';
+    };
+    const hideTooltip = () => { if (tooltip) { tooltip.remove(); tooltip = null; } };
+
+    const rightEdge = document.createElement('div');
+    rightEdge.className = 'timeline-bar-edge right';
+    barEl.appendChild(rightEdge);
+
+    rightEdge.addEventListener('mousedown', (e) => {
+      e.stopPropagation(); e.preventDefault();
+      const startX = e.clientX; const startWidth = barEl.offsetWidth; const cellW = 40;
+      const onMove = (ev) => {
+        const dx = ev.clientX - startX;
+        const newWidth = Math.max(cellW, startWidth + dx);
+        barEl.style.width = newWidth + 'px';
+        const daysDelta = Math.round((newWidth - startWidth) / cellW);
+        const nd = new Date(task.dueDate + 'T00:00:00'); nd.setDate(nd.getDate() + daysDelta);
+        showTooltip(nd.toLocaleDateString('en', {month:'short',day:'numeric'}), ev.clientX, ev.clientY);
+      };
+      const onUp = (ev) => {
+        document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); hideTooltip();
+        const dx = ev.clientX - startX; const daysDelta = Math.round(dx / cellW);
+        if (daysDelta !== 0) {
+          const nd = new Date(task.dueDate + 'T00:00:00'); nd.setDate(nd.getDate() + daysDelta);
+          task.dueDate = nd.toISOString().split('T')[0]; this.save(); this.renderTimeline();
+        }
+      };
+      document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
+    });
+
+    barEl.addEventListener('mousedown', (e) => {
+      if (e.target === rightEdge) return;
+      e.preventDefault();
+      const startX = e.clientX; const startLeft = parseInt(barEl.style.left) || 0; const cellW = 40;
+      const onMove = (ev) => {
+        const dx = ev.clientX - startX;
+        barEl.style.left = (startLeft + dx) + 'px';
+        const daysDelta = Math.round(dx / cellW);
+        const nd = new Date(task.dueDate + 'T00:00:00'); nd.setDate(nd.getDate() + daysDelta);
+        showTooltip(nd.toLocaleDateString('en', {month:'short',day:'numeric'}), ev.clientX, ev.clientY);
+      };
+      const onUp = (ev) => {
+        document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); hideTooltip();
+        const dx = ev.clientX - startX; const daysDelta = Math.round(dx / cellW);
+        if (daysDelta !== 0) {
+          const nd = new Date(task.dueDate + 'T00:00:00'); nd.setDate(nd.getDate() + daysDelta);
+          task.dueDate = nd.toISOString().split('T')[0];
+          if (task.createdAt) { const nc = new Date(task.createdAt + 'T00:00:00'); nc.setDate(nc.getDate() + daysDelta); task.createdAt = nc.toISOString().split('T')[0]; }
+          this.save(); this.renderTimeline();
+        }
+      };
+      document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
+    });
+  },
+
+  // ===== CELEBRATE (confetti) =====
+  celebrate() {
+    const canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    const particles = [];
+    const colors = ['#6366f1','#f59e0b','#22c55e','#f43f5e','#3b82f6','#a855f7','#14b8a6'];
+    for (let i = 0; i < 120; i++) {
+      particles.push({ x: Math.random()*canvas.width, y: -20 - Math.random()*200, w: 6+Math.random()*6, h: 4+Math.random()*4, color: colors[Math.floor(Math.random()*colors.length)], vx: (Math.random()-0.5)*4, vy: 2+Math.random()*4, rot: Math.random()*360, rotV: (Math.random()-0.5)*10, opacity: 1 });
+    }
+    let frame = 0;
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let alive = false;
+      particles.forEach(p => {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.rot += p.rotV;
+        if (frame > 60) p.opacity -= 0.015;
+        if (p.opacity <= 0) return;
+        alive = true;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot * Math.PI / 180); ctx.globalAlpha = Math.max(0, p.opacity); ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h); ctx.restore();
+      });
+      frame++;
+      if (alive && frame < 180) requestAnimationFrame(animate);
+      else ctx.clearRect(0, 0, canvas.width, canvas.height);
+    };
+    animate();
+  },
+
+  // ===== FAVICON BADGE =====
+  updateFaviconBadge() {
+    const unread = this.notifications.filter(n => !n.read).length;
+    let link = document.querySelector('link[rel="icon"]');
+    if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+    const canvas = document.createElement('canvas');
+    canvas.width = 32; canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#2c2418'; ctx.beginPath(); ctx.roundRect(0, 0, 32, 32, 6); ctx.fill();
+    ctx.strokeStyle = '#fffefa'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(9, 16); ctx.lineTo(13, 20); ctx.lineTo(23, 10); ctx.stroke();
+    if (unread > 0) {
+      ctx.fillStyle = '#c0886a'; ctx.beginPath(); ctx.arc(26, 6, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'white'; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(unread > 9 ? '9+' : unread.toString(), 26, 7);
+    }
+    link.href = canvas.toDataURL();
+  },
+
+  // ===== CONTEXT MENU =====
+  showContextMenu(e, type, id) {
+    const menu = document.getElementById('context-menu');
+    if (!menu) return;
+    let html = '';
+    if (type === 'task') {
+      const task = this.tasks.find(t => t.id === id);
+      if (!task) return;
+      html = `
+        <div class="context-menu-item" onclick="app.openTask('${id}');app.hideContextMenu()">Edit</div>
+        <div class="context-menu-sub"><div class="context-menu-item">Change Status</div><div class="context-menu-sub-items">${this.boardColumns.map(c => `<div class="context-menu-item" onclick="app.ctxSetStatus('${id}','${c.id}')">${this.esc(c.name)}</div>`).join('')}</div></div>
+        <div class="context-menu-sub"><div class="context-menu-item">Set Priority</div><div class="context-menu-sub-items"><div class="context-menu-item" onclick="app.ctxSetPriority('${id}','p0')">Urgent</div><div class="context-menu-item" onclick="app.ctxSetPriority('${id}','p1')">High</div><div class="context-menu-item" onclick="app.ctxSetPriority('${id}','p2')">Medium</div><div class="context-menu-item" onclick="app.ctxSetPriority('${id}','p3')">Low</div></div></div>
+        <div class="context-menu-sub"><div class="context-menu-item">Assign to</div><div class="context-menu-sub-items">${this.users.map(u => `<div class="context-menu-item" onclick="app.ctxAssign('${id}','${u.id}')">${this.esc(u.name)}</div>`).join('')}</div></div>
+        <div class="context-menu-sep"></div>
+        <div class="context-menu-item danger" onclick="app.deleteTask('${id}');app.hideContextMenu()">Delete</div>`;
+    } else if (type === 'project') {
+      html = `<div class="context-menu-item" onclick="app.editProject('${id}');app.hideContextMenu()">Edit</div><div class="context-menu-item danger" onclick="app.deleteProject('${id}');app.hideContextMenu()">Delete</div>`;
+    }
+    menu.innerHTML = html;
+    let x = e.clientX, y = e.clientY;
+    menu.classList.add('show');
+    const mw = menu.offsetWidth, mh = menu.offsetHeight;
+    if (x + mw > window.innerWidth) x = window.innerWidth - mw - 8;
+    if (y + mh > window.innerHeight) y = window.innerHeight - mh - 8;
+    menu.style.left = x + 'px'; menu.style.top = y + 'px';
+    if (x + mw + 150 > window.innerWidth) menu.querySelectorAll('.context-menu-sub-items').forEach(s => s.classList.add('flip-left'));
+  },
+
+  hideContextMenu() {
+    document.getElementById('context-menu')?.classList.remove('show');
+  },
+
+  ctxSetStatus(taskId, status) {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (task) { this.pushUndo('Status changed'); task.status = status; this._appendActivity(task, `Status changed to ${status}`); if (status === 'done') this.celebrate(); this.render(); this.save(); }
+    this.hideContextMenu();
+  },
+
+  ctxSetPriority(taskId, priority) {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (task) { task.priority = priority; this.save(); this.render(); }
+    this.hideContextMenu();
+  },
+
+  ctxAssign(taskId, userId) {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (task) { task.assigneeId = userId; this.save(); this.render(); }
+    this.hideContextMenu();
+  },
+
+  // ===== @MENTIONS =====
+  _mentionQuery: '',
+  _mentionStart: -1,
+  _mentionIdx: 0,
+
+  handleMentionInput(e) {
+    const textarea = e.target;
+    const val = textarea.value;
+    const pos = textarea.selectionStart;
+    const before = val.substring(0, pos);
+    const atIdx = before.lastIndexOf('@');
+    if (atIdx >= 0 && (atIdx === 0 || before[atIdx - 1] === ' ' || before[atIdx - 1] === '\n')) {
+      const query = before.substring(atIdx + 1);
+      if (!query.includes(' ') && query.length < 30) {
+        this._mentionQuery = query.toLowerCase(); this._mentionStart = atIdx; this._mentionIdx = 0;
+        this.showMentions(textarea); return;
+      }
+    }
+    this.hideMentions();
+  },
+
+  handleMentionKeydown(e) {
+    const dd = document.getElementById('mentions-dropdown');
+    if (!dd?.classList.contains('show')) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); this._mentionIdx++; this.highlightMention(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); this._mentionIdx = Math.max(0, this._mentionIdx - 1); this.highlightMention(); }
+    if (e.key === 'Enter' || e.key === 'Tab') { const active = dd.querySelector('.mention-item.active'); if (active) { e.preventDefault(); this.insertMention(active.dataset.name); } }
+    if (e.key === 'Escape') this.hideMentions();
+  },
+
+  showMentions(textarea) {
+    const dd = document.getElementById('mentions-dropdown');
+    if (!dd) return;
+    const filtered = this.users.filter(u => u.name.toLowerCase().includes(this._mentionQuery));
+    if (!filtered.length) { this.hideMentions(); return; }
+    this._mentionIdx = Math.min(this._mentionIdx, filtered.length - 1);
+    dd.innerHTML = filtered.map((u, i) => `<div class="mention-item ${i === this._mentionIdx ? 'active' : ''}" data-name="${this.esc(u.name)}" onclick="app.insertMention('${this.esc(u.name)}')"><div class="team-avatar" style="background:${this.safeColor(u.color)};width:22px;height:22px;font-size:9px">${this.initials(u.name)}</div>${this.esc(u.name)}</div>`).join('');
+    const rect = textarea.getBoundingClientRect();
+    dd.style.left = rect.left + 'px'; dd.style.top = (rect.top - dd.offsetHeight - 4) + 'px';
+    dd.classList.add('show');
+    if (parseInt(dd.style.top) < 0) dd.style.top = (rect.bottom + 4) + 'px';
+  },
+
+  highlightMention() {
+    const items = document.querySelectorAll('#mentions-dropdown .mention-item');
+    this._mentionIdx = Math.max(0, Math.min(this._mentionIdx, items.length - 1));
+    items.forEach((el, i) => el.classList.toggle('active', i === this._mentionIdx));
+  },
+
+  insertMention(name) {
+    const textarea = document.getElementById('comment-input');
+    if (!textarea) return;
+    const val = textarea.value;
+    const before = val.substring(0, this._mentionStart);
+    const after = val.substring(textarea.selectionStart);
+    textarea.value = before + '@' + name + ' ' + after;
+    textarea.focus();
+    const newPos = before.length + name.length + 2;
+    textarea.setSelectionRange(newPos, newPos);
+    this.hideMentions();
+  },
+
+  hideMentions() {
+    document.getElementById('mentions-dropdown')?.classList.remove('show');
+  },
+
+  // ===== DELIVERABLES =====
+  renderDeliverables(task) {
+    const el = document.getElementById('deliverable-list');
+    if (!el) return;
+    const deliverables = task.deliverables || [];
+    el.innerHTML = deliverables.length ? deliverables.map(d => {
+      const icon = d.type === 'link'
+        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
+        : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+      return `<div class="deliverable-item"><span class="deliverable-icon">${icon}</span><a href="${this.esc(d.url)}" target="_blank" rel="noopener">${this.esc(d.name)}</a><button class="btn-icon btn-sm" onclick="app.removeDeliverable('${d.id}')" style="width:20px;height:20px;color:var(--text-light)">&times;</button></div>`;
+    }).join('') : '<p style="font-size:12px;color:var(--text-light)">No deliverables</p>';
+  },
+
+  addDeliverable() {
+    if (!this.currentTaskId) return;
+    const task = this.tasks.find(t => t.id === this.currentTaskId);
+    if (!task) return;
+    const name = prompt('Deliverable name:'); if (!name) return;
+    const url = prompt('URL or file path:', 'https://'); if (!url) return;
+    task.deliverables = task.deliverables || [];
+    task.deliverables.push({ id: this.generateId(), name, url, type: url.startsWith('http') ? 'link' : 'file' });
+    this.save(); this.renderDeliverables(task);
+  },
+
+  removeDeliverable(id) {
+    if (!this.currentTaskId) return;
+    const task = this.tasks.find(t => t.id === this.currentTaskId);
+    if (!task) return;
+    task.deliverables = (task.deliverables || []).filter(d => d.id !== id);
+    this.save(); this.renderDeliverables(task);
   },
 }
