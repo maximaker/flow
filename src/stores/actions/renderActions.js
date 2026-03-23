@@ -321,6 +321,12 @@ export const renderActions = {
         <p class="empty-state-sub">Try different keywords or remove a filter.</p>
         <button class="btn-secondary" onclick="app.clearFilters()">Clear filters</button>
       </div>`;
+    const emptyFocus = `<div class="empty-state-rich">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <p>Nothing urgent right now</p>
+        <p class="empty-state-sub">No overdue or in-progress tasks due today. Enjoy the calm, or turn off Focus mode to see everything.</p>
+        <button class="btn-secondary" onclick="app.toggleFocusMode()">Exit focus mode</button>
+      </div>`;
     const emptyDefault = `<div class="empty-state-rich">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
         <p>Your task list is clear — nice work!</p>
@@ -329,7 +335,7 @@ export const renderActions = {
       </div>`;
 
     if (!rootTasks.length) {
-      document.getElementById('my-tasks-list').innerHTML = isFiltered ? emptyFiltered : emptyDefault;
+      document.getElementById('my-tasks-list').innerHTML = this.focusMode ? emptyFocus : isFiltered ? emptyFiltered : emptyDefault;
     } else if (sortPref === 'status' && !fStatus) {
       // Group tasks into column-based sections for clear mental model
       const seen = new Set();
