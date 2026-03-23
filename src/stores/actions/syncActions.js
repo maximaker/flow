@@ -4,12 +4,24 @@ export const syncActions = {
   // ===== PERSISTENCE =====
   async loadData() {
     try {
+      // Paginate to avoid hitting PocketBase's single-response size limit
+      const PAGE = 500;
+      const fetchAll = async (col, opts) => {
+        let page = 1, all = [];
+        while (true) {
+          const res = await pb.collection(col).getList(page, PAGE, opts);
+          all = all.concat(res.items);
+          if (page >= res.totalPages) break;
+          page++;
+        }
+        return all;
+      };
       const [users, projects, tasks, notifications, labels] = await Promise.all([
-        pb.collection('users').getFullList({ sort: 'name' }),
-        pb.collection('projects').getFullList({ sort: 'name' }),
-        pb.collection('tasks').getFullList({ sort: 'order' }),
-        pb.collection('notifications').getFullList({ sort: '-timestamp' }),
-        pb.collection('labels').getFullList({ sort: 'name' }),
+        fetchAll('users',         { sort: 'name' }),
+        fetchAll('projects',      { sort: 'name' }),
+        fetchAll('tasks',         { sort: 'order' }),
+        fetchAll('notifications', { sort: '-timestamp' }),
+        fetchAll('labels',        { sort: 'name' }),
       ]);
       this.users = users.map(r => ({ id: r.id, name: r.name, email: r.email, role: r.role || 'user', color: r.color || '#7a7a7a' }));
       this.projects = projects.map(r => ({ id: r.id, name: r.name, color: r.color, description: r.description }));
@@ -68,15 +80,31 @@ export const syncActions = {
     if (newTasks.length > 0) { this.tasks.push(...newTasks); this.save(); }
   },
 
+  _lsSet(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      if (e?.name === 'QuotaExceededError' || e?.code === 22 || e?.code === 1014) {
+        // Storage full — notify user once, then try to free space by pruning notifications
+        if (!this._storageWarnShown) {
+          this._storageWarnShown = true;
+          this.toast('Local storage is full. Old notifications have been cleared to make room. Your data is safe in the cloud.', 'error');
+          try { localStorage.removeItem('fb_notifications'); } catch {}
+          try { localStorage.setItem(key, value); } catch {}
+        }
+      }
+    }
+  },
+
   save() {
-    localStorage.setItem('fb_users', JSON.stringify(this.users));
-    localStorage.setItem('fb_projects', JSON.stringify(this.projects));
-    localStorage.setItem('fb_tasks', JSON.stringify(this.tasks));
-    localStorage.setItem('fb_notifications', JSON.stringify(this.notifications));
-    localStorage.setItem('fb_labels', JSON.stringify(this.labels));
-    localStorage.setItem('fb_theme', this.theme);
-    localStorage.setItem('fb_notif_prefs', JSON.stringify(this.notifPrefs));
-    if (this.tourCompleted) localStorage.setItem('fb_tour_completed', '1');
+    this._lsSet('fb_users',       JSON.stringify(this.users));
+    this._lsSet('fb_projects',    JSON.stringify(this.projects));
+    this._lsSet('fb_tasks',       JSON.stringify(this.tasks));
+    this._lsSet('fb_notifications', JSON.stringify(this.notifications));
+    this._lsSet('fb_labels',      JSON.stringify(this.labels));
+    this._lsSet('fb_theme',       this.theme);
+    this._lsSet('fb_notif_prefs', JSON.stringify(this.notifPrefs));
+    if (this.tourCompleted) this._lsSet('fb_tour_completed', '1');
     this._schedulePbSync();
   },
 
@@ -90,9 +118,9 @@ export const syncActions = {
     };
   },
 
-  _schedulePbSync() {
+  _schedulePbSync(delayMs = 800) {
     if (this._pbSyncTimer) clearTimeout(this._pbSyncTimer);
-    this._pbSyncTimer = setTimeout(() => this._syncToPb(), 800);
+    this._pbSyncTimer = setTimeout(() => this._syncToPb(), delayMs);
   },
 
   _setSyncStatus(status, errorMsg = null) {
@@ -123,8 +151,16 @@ export const syncActions = {
       String(e?.message).includes('401') || String(e?.message).includes('not authenticated');
   },
 
+  _isRateLimited(e) {
+    return e?.status === 429 || String(e?.message).includes('429') || String(e?.message).includes('rate');
+  },
+
   async _syncToPb() {
-    if (!pb.authStore.isValid) return;
+    // Proactively check token validity — expiry mid-session should force re-auth
+    if (!pb.authStore.isValid) {
+      this._handleSessionExpired();
+      return;
+    }
     this._syncing = true;
     this._setSyncStatus('syncing');
     let hadError = false;
@@ -190,11 +226,18 @@ export const syncActions = {
         }
       }
       this._pbSnapshot = this._snapshot();
+      this._pbSyncBackoff = 800; // reset backoff on success
       this._setSyncStatus(hadError ? 'error' : 'idle', hadError ? 'Some changes failed to sync' : null);
     } catch (e) {
+      if (this._isAuthError(e)) { this._handleSessionExpired(); return; }
       const isOffline = !navigator.onLine || e?.message?.includes('Failed to fetch') || e?.message?.includes('NetworkError');
+      const isRateLimited = this._isRateLimited(e);
       this._setSyncStatus(isOffline ? 'offline' : 'error', e?.message);
-      console.warn('PB sync failed:', e.message);
+      // Exponential backoff: double the delay up to 5 minutes on repeated failures
+      if (isRateLimited || !isOffline) {
+        this._pbSyncBackoff = Math.min((this._pbSyncBackoff || 800) * 2, 300_000);
+        this._schedulePbSync(this._pbSyncBackoff);
+      }
     } finally {
       this._syncing = false;
     }
@@ -247,7 +290,7 @@ export const syncActions = {
             if (idx !== -1) arr.splice(idx, 1);
           }
           this._pbSnapshot = this._snapshot();
-          localStorage.setItem(`fb_${col.store}`, JSON.stringify(this[col.store]));
+          this._lsSet(`fb_${col.store}`, JSON.stringify(this[col.store]));
           this.render();
           this.updateFaviconBadge();
         });

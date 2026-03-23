@@ -89,21 +89,44 @@ export const userActions = {
   },
 
   showTempPwModal(email, password) {
-    this._tempPwEmail = email;
-    this._tempPwPassword = password;
+    // Store only in DOM data attributes — never persist in app state or JS variables
+    const overlay = document.getElementById('temp-pw-modal-overlay');
+    if (!overlay) return;
     document.getElementById('temp-pw-email').textContent = email;
     document.getElementById('temp-pw-value').textContent = password;
-    document.getElementById('temp-pw-modal-overlay').classList.add('show');
+    overlay.dataset.email = email;
+    overlay.dataset.pw = password;
+    overlay.classList.add('show');
   },
   closeTempPwModal() {
-    document.getElementById('temp-pw-modal-overlay')?.classList.remove('show');
-    this._tempPwEmail = null;
-    this._tempPwPassword = null;
+    const overlay = document.getElementById('temp-pw-modal-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('show');
+    // Clear sensitive data from DOM immediately on close
+    delete overlay.dataset.email;
+    delete overlay.dataset.pw;
+    const emailEl = document.getElementById('temp-pw-email');
+    const pwEl = document.getElementById('temp-pw-value');
+    if (emailEl) emailEl.textContent = '';
+    if (pwEl) pwEl.textContent = '';
   },
   copyTempField(field) {
-    const text = field === 'email' ? this._tempPwEmail : this._tempPwPassword;
+    const overlay = document.getElementById('temp-pw-modal-overlay');
+    const text = field === 'email'
+      ? overlay?.dataset.email
+      : overlay?.dataset.pw;
     if (!text) return;
-    navigator.clipboard.writeText(text).then(() => this.toast('Copied to clipboard'));
+    const copy = navigator.clipboard?.writeText(text);
+    if (copy) {
+      copy.then(() => this.toast('Copied to clipboard'));
+    } else {
+      // Fallback for non-HTTPS or unsupported browsers
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); this.toast('Copied to clipboard'); } catch {}
+      document.body.removeChild(ta);
+    }
   },
 
   // ===== USER ROLES & PERMISSIONS =====

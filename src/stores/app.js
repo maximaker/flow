@@ -466,19 +466,36 @@ export const useAppStore = defineStore('app', {
   },
 
   render() {
-    this.renderSidebar();
-    this.renderNotifications();
-    this.renderNavBadges();
-    this.renderBreadcrumb();
-    switch (this.currentView) {
-      case 'home': this.renderHome(); break;
-      case 'my-tasks': this.renderMyTasks(); break;
-      case 'board': this.renderBoard(); break;
-      case 'timeline': this.renderTimeline(); break;
-      case 'analytics': this.renderAnalytics(); break;
-      case 'workload': this.renderWorkload(); break;
-      case 'project': this.renderProjectView(); break;
-      case 'settings': this.renderSettings(); break;
+    try {
+      this.renderSidebar();
+      this.renderNotifications();
+      this.renderNavBadges();
+      this.renderBreadcrumb();
+    } catch (e) {
+      console.error('[Flow] Shell render error:', e);
+    }
+    try {
+      switch (this.currentView) {
+        case 'home': this.renderHome(); break;
+        case 'my-tasks': this.renderMyTasks(); break;
+        case 'board': this.renderBoard(); break;
+        case 'timeline': this.renderTimeline(); break;
+        case 'analytics': this.renderAnalytics(); break;
+        case 'workload': this.renderWorkload(); break;
+        case 'project': this.renderProjectView(); break;
+        case 'settings': this.renderSettings(); break;
+      }
+    } catch (e) {
+      console.error('[Flow] View render error:', e);
+      // Show an in-place error rather than a blank view
+      const contentArea = document.querySelector('.content-area');
+      if (contentArea) {
+        contentArea.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-secondary)">
+          <p style="font-size:18px;font-weight:500;margin-bottom:8px">Something went wrong displaying this view</p>
+          <p style="font-size:14px;margin-bottom:20px">${e?.message || 'Unknown error'}</p>
+          <button class="btn-primary" onclick="window.location.reload()">Reload</button>
+        </div>`;
+      }
     }
   },
 

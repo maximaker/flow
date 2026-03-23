@@ -66,5 +66,19 @@ function retryInit() {
   runInit()
 }
 
-onMounted(runInit)
+onMounted(() => {
+  runInit()
+
+  // Global unhandled promise rejection guard — surfaces silent async failures
+  window.addEventListener('unhandledrejection', (event) => {
+    const msg = event.reason?.message || String(event.reason) || 'Unknown async error'
+    // Ignore benign browser/extension noise
+    if (/ResizeObserver|cancelled|abort/i.test(msg)) return
+    console.error('[Flow] Unhandled promise rejection:', event.reason)
+    // If app is running, show a toast so the user knows something went wrong
+    if (store.appStarted && typeof store.toast === 'function') {
+      store.toast('Something went wrong. If the problem persists, try refreshing the page.', 'error')
+    }
+  })
+})
 </script>

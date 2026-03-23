@@ -1637,7 +1637,15 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .login-input { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--bg); color: var(--text); outline: none; transition: border-color 0.2s; box-sizing: border-box; font-family: inherit; }
 .login-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
 .login-btn { width: 100%; padding: 10px; font-size: 14px; margin-top: 4px; }
-.login-error { color: var(--danger); font-size: 13px; text-align: center; margin: 0; }
+.login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.login-error { color: var(--danger); font-size: 13px; text-align: center; margin: 4px 0 0; }
+.login-forgot-btn { background: none; border: none; color: var(--text-secondary); font-size: 13px; cursor: pointer; margin-top: 10px; width: 100%; text-align: center; padding: 4px; }
+.login-forgot-btn:hover { color: var(--accent); text-decoration: underline; }
+.login-reset-form { margin-top: 12px; padding: 14px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border); }
+.login-reset-hint { font-size: 13px; color: var(--text-secondary); margin: 0 0 10px; }
+.login-reset-row { display: flex; gap: 8px; }
+.login-reset-row .login-input { flex: 1; }
+.login-reset-row .btn-secondary { white-space: nowrap; flex-shrink: 0; }
 .shake { animation: shake 0.4s ease; }
 @keyframes shake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-6px); } 40%,80% { transform: translateX(6px); } }
 

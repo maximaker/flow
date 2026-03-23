@@ -40,8 +40,29 @@
             @keydown.enter="handleLogin"
           >
         </div>
-        <button class="btn-primary login-btn" @click="handleLogin">Sign In</button>
-        <p v-if="store.loginError" class="login-error">Invalid password</p>
+        <button class="btn-primary login-btn" @click="handleLogin" :disabled="loading">
+          {{ loading ? 'Signing in…' : 'Sign in' }}
+        </button>
+        <p v-if="store.loginError" class="login-error">Incorrect email or password</p>
+        <button class="login-forgot-btn" @click="showReset = !showReset" type="button">
+          Forgot your password?
+        </button>
+        <div v-if="showReset" class="login-reset-form">
+          <p class="login-reset-hint">Enter your email and we'll send a reset link.</p>
+          <div class="login-reset-row">
+            <input
+              type="email"
+              v-model="resetEmail"
+              class="login-input"
+              placeholder="you@flow.io"
+              @keydown.enter="handleReset"
+            >
+            <button class="btn-secondary" @click="handleReset" :disabled="resetSent">
+              {{ resetSent ? 'Sent ✓' : 'Send link' }}
+            </button>
+          </div>
+          <p v-if="resetError" class="login-error">{{ resetError }}</p>
+        </div>
       </div>
     </div>
   </div>
@@ -50,12 +71,37 @@
 <script setup>
 import { ref } from 'vue'
 import { useAppStore } from '../stores/app.js'
+import { pb } from '../pb.js'
 
 const store = useAppStore()
 const email = ref('')
 const password = ref('')
+const loading = ref(false)
+const showReset = ref(false)
+const resetEmail = ref('')
+const resetSent = ref(false)
+const resetError = ref('')
 
 const handleLogin = async () => {
+  loading.value = true
   await store.login(email.value, password.value)
+  loading.value = false
+}
+
+const handleReset = async () => {
+  resetError.value = ''
+  const addr = resetEmail.value.trim() || email.value.trim()
+  if (!addr || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)) {
+    resetError.value = 'Please enter a valid email address.'
+    return
+  }
+  try {
+    await pb.collection('users').requestPasswordReset(addr)
+    resetSent.value = true
+  } catch (e) {
+    // PocketBase returns 200 even for unknown emails (security best practice),
+    // but if it does fail surface a friendly message
+    resetError.value = 'Could not send reset email. Please try again or contact your admin.'
+  }
 }
 </script>

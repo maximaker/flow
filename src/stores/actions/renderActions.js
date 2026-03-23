@@ -237,10 +237,15 @@ export const renderActions = {
       });
     }
 
+    // Pre-build O(1) lookup maps — avoids O(n) array scans inside the render loop
+    const userMap = new Map(this.users.map(u => [u.id, u]));
+    const projMap = new Map(this.projects.map(p => [p.id, p]));
+    const labelMap = new Map(this.labels.map(l => [l.id, l]));
+
     // Render tree recursively
     const renderTaskRow = (t, level, parentTask) => {
-      const assignee = this.users.find(u => u.id === t.assigneeId);
-      const proj = this.projects.find(p => p.id === t.projectId);
+      const assignee = userMap.get(t.assigneeId);
+      const proj = projMap.get(t.projectId);
       const si = this.getSubtaskInfo(t);
       const ac = (t.attachments||[]).length;
       const sel = this.selectedTasks.includes(t.id);
@@ -518,14 +523,18 @@ export const renderActions = {
     const board = document.getElementById('kanban-board');
     const dotColors = { 'todo': 'var(--todo)', 'in-progress': 'var(--progress)', 'done': 'var(--done)' };
 
+    // Pre-build O(1) lookup maps for the board render loop
+    const userMap = new Map(this.users.map(u => [u.id, u]));
+    const projMap = new Map(this.projects.map(p => [p.id, p]));
+
     board.innerHTML = this.boardColumns.map(col => {
       const status = col.id;
       const tasks = filtered.filter(t => t.status === status).sort((a,b) => (a.order||0) - (b.order||0));
       const dotColor = dotColors[status] || 'var(--text-light)';
 
       const cardsHtml = tasks.length ? tasks.map(t => {
-        const assignee = this.users.find(u => u.id === t.assigneeId);
-        const proj = this.projects.find(p => p.id === t.projectId);
+        const assignee = userMap.get(t.assigneeId);
+        const proj = projMap.get(t.projectId);
         const si = this.getSubtaskInfo(t);
         const ac = (t.attachments||[]).length;
         const blocked = this.isBlocked(t);
