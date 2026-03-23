@@ -213,6 +213,29 @@ export const renderActions = {
     else if (sortPref === 'priority') rootTasks.sort((a,b) => { const o = {p0:0,p1:1,p2:2,p3:3,'':4}; return (o[a.priority]??4) - (o[b.priority]??4); });
     else if (sortPref === 'alpha') rootTasks.sort((a,b) => a.title.localeCompare(b.title));
     else if (sortPref === 'created') rootTasks.sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
+    else if (sortPref === 'effort-asc') {
+      const effortOrder = {trivial:0,small:1,medium:2,large:3,xl:4,epic:5};
+      const priorityOrder = {p0:0,p1:1,p2:2,p3:3,'':4};
+      rootTasks.sort((a,b) => {
+        const ea = effortOrder[a.effort] ?? 6, eb = effortOrder[b.effort] ?? 6;
+        if (ea !== eb) return ea - eb;
+        return (priorityOrder[a.priority]??4) - (priorityOrder[b.priority]??4);
+      });
+    }
+
+    // Focus mode: only show overdue/due-today and in-progress tasks
+    if (this.focusMode) {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const todayStr = today.toISOString().split('T')[0];
+      const lastColId = this.boardColumns[this.boardColumns.length - 1]?.id;
+      rootTasks = rootTasks.filter(t => {
+        if (t.status === lastColId) return false;
+        const ci = this.boardColumns.findIndex(c => c.id === t.status);
+        const isInProgress = ci > 0 && ci < this.boardColumns.length - 1;
+        const isDueToday = t.dueDate && t.dueDate <= todayStr;
+        return isInProgress || isDueToday;
+      });
+    }
 
     // Render tree recursively
     const renderTaskRow = (t, level, parentTask) => {
@@ -238,11 +261,12 @@ export const renderActions = {
       // For subtasks (level > 0), hide meta that matches parent
       const showPriority = level > 0 && parentTask ? (t.priority && t.priority !== parentTask.priority) : !!t.priority;
       const showProject = level > 0 && parentTask ? (proj && t.projectId !== parentTask.projectId) : !!proj;
-      const showEffort = !!(t.effort);
+      const isDone = colClass === 'col-done';
+      const isFirstCol = colIdx === 0;
       const filteredLabelIds = level > 0 && parentTask ? (t.labelIds||[]).filter(lid => !(parentTask.labelIds||[]).includes(lid)) : (t.labelIds||[]);
 
-      const hasMeta = showPriority || showProject || t.dueDate || blocked || filteredLabelIds.length || showEffort;
-      const isOverdue = t.dueDate && this.dueDateClass(t.dueDate) === 'overdue' && t.status !== 'done' && colIdx !== this.boardColumns.length - 1;
+      const hasMeta = showPriority || showProject || t.dueDate || blocked || filteredLabelIds.length;
+      const isOverdue = t.dueDate && this.dueDateClass(t.dueDate) === 'overdue' && !isDone;
 
       let html = `<div class="task-list-item ${sel?'selected':''}" data-task-id="${t.id}" data-level="${level}" draggable="true"
         ondragstart="app.onListDragStart(event,'${t.id}')" ondragend="app.onListDragEnd(event)"
@@ -265,7 +289,10 @@ export const renderActions = {
           <div class="task-list-right">
             ${si.total>0 ? `<span class="task-subtask-badge" title="${si.done} of ${si.total} subtasks completed">${si.done}/${si.total}</span>` : ''}
             ${ac>0 ? '<span class="task-attachment-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span>' : ''}
+            ${t.effort ? this.effortBadge(t.effort) : ''}
             ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
+            ${isFirstCol && !isDone ? `<button class="task-start-btn" title="Start this task" onclick="event.stopPropagation();app.startTask('${t.id}')">▶ Start</button>` : ''}
+            ${!isDone ? `<span class="task-snooze-group"><button class="task-snooze-btn" title="Snooze to tomorrow" onclick="event.stopPropagation();app.snoozeTask('${t.id}','tomorrow')">→ Tomorrow</button><button class="task-snooze-btn" title="Snooze to next week" onclick="event.stopPropagation();app.snoozeTask('${t.id}','week')">→ Week</button></span>` : ''}
           </div>
         </div>
         ${hasMeta ? `<div class="task-list-meta" style="padding-left:${indent + 20 + 16 + 18 + 24}px">
@@ -274,7 +301,6 @@ export const renderActions = {
             ${t.dueDate ? `<span class="task-list-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}">${this.formatDate(t.dueDate)}</span>` : ''}
             ${isOverdue ? `<button class="rescue-btn" onclick="event.stopPropagation();app.rescueTask('${t.id}')" title="Move to today">Reschedule?</button>` : ''}
             ${blocked ? '<span class="blocked-indicator">Blocked</span>' : ''}
-            ${showEffort ? this.effortBadge(t.effort) : ''}
             ${this.renderLabelTags(filteredLabelIds)}
           </div>` : ''}
       </div>`;

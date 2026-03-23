@@ -268,7 +268,11 @@
               </button>
               <button class="btn-secondary" onclick="app.showBulkImport()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                Bulk Import
+                Brain dump
+              </button>
+              <button id="focus-mode-btn" class="focus-mode-btn btn-secondary" onclick="app.toggleFocusMode()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                Focus
               </button>
             </div>
             <div class="filter-group">
@@ -284,6 +288,7 @@
                   <option value="priority">Sort: Priority</option>
                   <option value="alpha">Sort: A-Z</option>
                   <option value="created">Sort: Newest</option>
+                  <option value="effort-asc">Sort: Quick wins</option>
                 </select>
                 <button class="filter-more-btn" onclick="this.closest('.filter-group').classList.toggle('filters-expanded')">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>

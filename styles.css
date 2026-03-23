@@ -1762,6 +1762,55 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .rescue-btn { background: none; border: 1px solid var(--border); color: var(--text-secondary); font-size: 11px; padding: 2px 8px; border-radius: 20px; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
 .rescue-btn:hover { background: var(--bg-secondary); border-color: var(--text-light); color: var(--text); }
 
+/* ===== ADHD helpers: Start button, Snooze group, Focus mode ===== */
+/* Start button — appears on hover, first-column tasks only */
+.task-start-btn {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.1s;
+}
+.task-list-item:hover .task-start-btn { display: inline-flex; }
+.task-start-btn:hover { background: var(--accent-hover, #4f7dff); transform: scale(1.04); }
+
+/* Snooze group — two compact pill buttons, reveal on hover */
+.task-snooze-group {
+  display: none;
+  align-items: center;
+  gap: 4px;
+}
+.task-list-item:hover .task-snooze-group { display: inline-flex; }
+.task-snooze-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 20px;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.task-snooze-btn:hover { background: var(--bg-secondary); border-color: var(--text-light); color: var(--text); }
+
+/* Focus mode button */
+.focus-mode-btn { display: inline-flex; align-items: center; gap: 6px; }
+.focus-mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.focus-mode-btn.active:hover { background: var(--accent-hover, #4f7dff); }
+
 /* ===== Completion Celebration Animation ===== */
 .task-check.just-completed {
   animation: checkPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
