@@ -21,6 +21,7 @@ export const useAppStore = defineStore('app', {
   currentView: 'home', selectedTasks: [], cmdSelectedIndex: 0, selectedProjectId: null, projectViewMode: 'list',
   appStarted: false,
   loginError: false,
+  focusMode: false,  // ADHD focus: show only today's actionable tasks
   theme: 'light', draggedSubtaskId: null,
   currentUserId: null,
   boardColumns: [],
@@ -328,6 +329,14 @@ export const useAppStore = defineStore('app', {
     document.getElementById('cmd-overlay').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) this.closeCommandPalette();
     });
+  },
+
+  toggleFocusMode() {
+    this.focusMode = !this.focusMode;
+    const btn = document.getElementById('focus-mode-btn');
+    if (btn) btn.classList.toggle('active', this.focusMode);
+    this.renderMyTasks();
+    this.toast(this.focusMode ? 'Focus mode on — showing only what needs attention today' : 'Focus mode off — showing all tasks');
   },
 
   isInputFocused() {

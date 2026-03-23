@@ -855,6 +855,70 @@ export const taskActions = {
     document.querySelectorAll('.panel-main-tab-content').forEach(c => c.classList.toggle('active', c.id === 'mtab-' + tabName));
   },
 
+  // ===== RESCUE / INLINE EDIT / QUICK DATE =====
+  rescueTask(taskId) {
+    const t = this.tasks.find(x => x.id === taskId);
+    if (!t) return;
+    t.dueDate = new Date().toISOString().split('T')[0];
+    this.save(); this.render();
+    this.toast('Rescheduled to today');
+  },
+
+  startInlineEdit(event, taskId) {
+    event.stopPropagation();
+    const span = event.target;
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const input = document.createElement('input');
+    input.type = 'text'; input.className = 'task-list-name-input'; input.value = task.title;
+    span.replaceWith(input); input.focus(); input.select();
+    const finish = (save) => {
+      if (save) { const val = input.value.trim(); if (val) task.title = val; this.save(); }
+      this.renderMyTasks();
+    };
+    input.addEventListener('blur', () => finish(true));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+      if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+  },
+
+  setQuickDate(inputId, value) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const d = new Date(); d.setHours(0, 0, 0, 0);
+    if (value === 'today') input.value = d.toISOString().split('T')[0];
+    else if (value === 'tomorrow') { d.setDate(d.getDate() + 1); input.value = d.toISOString().split('T')[0]; }
+    else if (value === 'nextweek') { d.setDate(d.getDate() + 7); input.value = d.toISOString().split('T')[0]; }
+    else if (value === 'none') input.value = '';
+    input.dispatchEvent(new Event('change'));
+  },
+
+  // ===== BOARD CARD CLICK (multi-select) =====
+  handleBoardCardClick(event, taskId) {
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault(); event.stopPropagation();
+      if (this.selectedTasks.includes(taskId)) this.selectedTasks = this.selectedTasks.filter(id => id !== taskId);
+      else this.selectedTasks.push(taskId);
+      this.renderBoard(); this.updateBulkBar(); return;
+    }
+    if (event.shiftKey) {
+      event.preventDefault(); event.stopPropagation();
+      const col = event.currentTarget?.closest('.column-cards');
+      if (col) {
+        const ids = Array.from(col.querySelectorAll('.task-card')).map(c => c.dataset.id);
+        const clickedIdx = ids.indexOf(taskId);
+        let lastIdx = -1;
+        ids.forEach((id, i) => { if (this.selectedTasks.includes(id)) lastIdx = i; });
+        const from = Math.min(lastIdx >= 0 ? lastIdx : clickedIdx, clickedIdx);
+        const to = Math.max(lastIdx >= 0 ? lastIdx : clickedIdx, clickedIdx);
+        for (let i = from; i <= to; i++) { if (!this.selectedTasks.includes(ids[i])) this.selectedTasks.push(ids[i]); }
+      } else if (!this.selectedTasks.includes(taskId)) this.selectedTasks.push(taskId);
+      this.renderBoard(); this.updateBulkBar(); return;
+    }
+    this.openTask(taskId);
+  },
+
   // ===== UNDO =====
   pushUndo(label) {
     this.undoStack = [{ label, tasks: JSON.parse(JSON.stringify(this.tasks)) }];
@@ -986,5 +1050,36 @@ export const taskActions = {
     this.tasks.push({ id: this.generateId(), title, description: '', status: 'todo', projectId, assigneeId, dueDate, priority, labelIds, blockedBy: [], order: this.tasks.filter(t => t.status === 'todo').length, parentId: '', deliverables: [], attachments: [], comments: [], activityLog: [{ text: 'Task created via quick add', timestamp: new Date().toISOString() }], createdAt: new Date().toISOString().split('T')[0] });
     this.save(); this.render();
     this.toast(`Task "${title}" created`, 'success');
+  },
+
+  // ===== ADHD HELPERS =====
+
+  startTask(taskId) {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    // Prefer a column whose id/name suggests "in progress"; fall back to second column
+    const progressCol = this.boardColumns.find(c =>
+      /progress|doing|active|started/i.test(c.id + c.name)
+    ) || this.boardColumns[1] || this.boardColumns[0];
+    if (!progressCol || task.status === progressCol.id) return;
+    this.pushUndo('Task started');
+    task.status = progressCol.id;
+    this.save();
+    this.render();
+    this.toast(`▶ Started — focus on: ${task.title}`);
+  },
+
+  snoozeTask(taskId, when) {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    this.pushUndo('Task snoozed');
+    const d = new Date(); d.setHours(0, 0, 0, 0);
+    if (when === 'tomorrow') d.setDate(d.getDate() + 1);
+    else if (when === 'week')  d.setDate(d.getDate() + 7);
+    task.dueDate = d.toISOString().split('T')[0];
+    this.save();
+    this.renderMyTasks();
+    const label = when === 'tomorrow' ? 'tomorrow' : 'next week';
+    this.toast(`Snoozed — back on your list ${label}`);
   },
 }
