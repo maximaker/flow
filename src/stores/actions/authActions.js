@@ -37,6 +37,7 @@ export const authActions = {
     this.render();
     this.updateFaviconBadge();
     this._subscribeToRealtime();
+    this._setupCrossTabSync();
     // Auto-start tour for first-time users
     if (!this.tourCompleted) setTimeout(() => this.startTour(), 800);
   },

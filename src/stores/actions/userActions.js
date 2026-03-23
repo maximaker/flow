@@ -30,6 +30,7 @@ export const userActions = {
     const email = document.getElementById('modal-user-email').value.trim();
     if (!name) { this.toast('Enter a name', 'error'); return; }
     if (!email) { this.toast('Enter an email', 'error'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { this.toast('Enter a valid email address', 'error'); return; }
     const color = document.querySelector('#user-color-picker .color-swatch.active')?.dataset.color || '#6366f1';
     const role = document.getElementById('modal-user-role').value;
     if (this.editingUserId) {

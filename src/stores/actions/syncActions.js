@@ -43,6 +43,7 @@ export const syncActions = {
         const settings = await pb.collection('settings').getOne('global');
         if (settings.boardColumns) this._pbBoardColumns = JSON.parse(settings.boardColumns);
         if (settings.templates) this._pbTemplates = JSON.parse(settings.templates);
+        if (settings.theme) { this.theme = settings.theme; localStorage.setItem('fb_theme', settings.theme); }
       } catch (e) { /* settings collection not yet created */ }
     } catch (e) {
       console.warn('PocketBase load failed, falling back to localStorage:', e);
@@ -245,7 +246,7 @@ export const syncActions = {
 
   async _syncSettings() {
     if (!pb.authStore.isValid) return;
-    const data = { boardColumns: JSON.stringify(this.boardColumns), templates: JSON.stringify(this.templates) };
+    const data = { boardColumns: JSON.stringify(this.boardColumns), templates: JSON.stringify(this.templates), theme: this.theme };
     try {
       await pb.collection('settings').update('global', data);
     } catch (e) {
@@ -299,6 +300,27 @@ export const syncActions = {
         console.warn(`Real-time subscription failed for ${col.name}:`, e);
       }
     }
+  },
+
+  // ===== CROSS-TAB SYNC =====
+  _setupCrossTabSync() {
+    const KEYS = ['fb_tasks', 'fb_projects', 'fb_users', 'fb_labels', 'fb_notifications'];
+    window.addEventListener('storage', (e) => {
+      // Only react to our own keys written by another tab
+      if (!KEYS.includes(e.key)) return;
+      // Ignore if this tab is the one actively syncing (avoids echo-looping our own save())
+      if (this._syncing) return;
+      try {
+        const fresh = JSON.parse(e.newValue || '[]');
+        const storeKey = e.key.replace('fb_', ''); // e.g. 'fb_tasks' → 'tasks'
+        if (Array.isArray(this[storeKey])) {
+          this[storeKey] = fresh;
+          this._pbSnapshot = this._snapshot();
+          this.render();
+          this.updateFaviconBadge();
+        }
+      } catch {}
+    });
   },
 
   // ===== SEED DATA =====

@@ -666,6 +666,8 @@ export const taskActions = {
     task.comments = task.comments || [];
     const commentUser = this.getCurrentUser() || this.users[0];
     task.comments.push({ id: this.generateId(), userId: commentUser?.id || this.currentUserId, text, timestamp: new Date().toISOString() });
+    // Keep only the 100 most recent comments to prevent unbounded growth
+    if (task.comments.length > 100) task.comments = task.comments.slice(-100);
     input.value = ''; this.save(); this.renderComments(task); this.renderActivityTimeline(task);
     if (task.assigneeId && task.assigneeId !== commentUser?.id) this.addNotification('comment', `${commentUser?.name} commented on "${task.title}"`, task.id);
     // Notify mentioned users
@@ -921,7 +923,9 @@ export const taskActions = {
 
   // ===== UNDO =====
   pushUndo(label) {
-    this.undoStack = [{ label, tasks: JSON.parse(JSON.stringify(this.tasks)) }];
+    this.undoStack.push({ label, tasks: JSON.parse(JSON.stringify(this.tasks)) });
+    // Keep at most 20 snapshots to avoid runaway memory usage
+    if (this.undoStack.length > 20) this.undoStack.shift();
   },
 
   undo() {

@@ -16,6 +16,10 @@ export default defineConfig({
     },
     // Warn if any chunk exceeds 400 KB before gzip.
     chunkSizeWarningLimit: 400,
+    // Strip all console.* calls and debugger statements from production bundles.
+    esbuild: {
+      drop: ['console', 'debugger'],
+    },
   },
 
   test: {

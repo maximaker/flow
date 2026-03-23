@@ -13,7 +13,12 @@
       </div>
     </div>
     <template v-else>
-      <LoginScreen v-if="!loggedIn" />
+      <div v-if="initialising" class="app-init-spinner" aria-label="Loading…">
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" class="spin">
+          <circle cx="18" cy="18" r="14" stroke="var(--accent,#6366f1)" stroke-width="3" stroke-dasharray="60 28" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <LoginScreen v-else-if="!loggedIn" />
       <AppShell v-else />
     </template>
   </div>
@@ -27,6 +32,7 @@ import AppShell from './components/AppShell.vue'
 
 const store = useAppStore()
 const initError = ref(null)
+const initialising = ref(true)
 
 // Expose a restricted proxy globally so v-html onclick="app.xxx()" handlers work.
 // The proxy forwards ALL function properties (bound to store) but hides raw state
@@ -54,11 +60,14 @@ const loggedIn = computed(() => store.currentUserId !== null && store.appStarted
 
 async function runInit() {
   initError.value = null
+  initialising.value = true
   try {
     await store.init()
   } catch (e) {
     console.error('[Flow] init() failed:', e)
     initError.value = e?.message || 'Unknown error'
+  } finally {
+    initialising.value = false
   }
 }
 

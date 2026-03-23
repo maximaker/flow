@@ -2443,6 +2443,14 @@ input:focus, select:focus, textarea:focus { outline: none; }
 [data-theme="dark"] .sync-status.error { background: rgba(220,38,38,0.15); }
 [data-theme="dark"] .sync-status.offline { background: rgba(217,119,6,0.15); }
 
+/* ===== App init spinner ===== */
+.app-init-spinner {
+  position: fixed; inset: 0; display: flex; align-items: center;
+  justify-content: center; background: var(--bg); z-index: 9999;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.9s linear infinite; }
+
 /* ===== Init error boundary ===== */
 .init-error-boundary {
   position: fixed; inset: 0; display: flex; align-items: center;
