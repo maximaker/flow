@@ -714,6 +714,88 @@ export const taskActions = {
     if (indicator) { indicator.classList.add('show'); clearTimeout(this._savedTimer); this._savedTimer = setTimeout(() => indicator.classList.remove('show'), 1500); }
   },
 
+  // ===== CONTEXT CHIP INTERACTIONS =====
+  cycleChipStatus() {
+    if (!this.currentTaskId) return;
+    const task = this.tasks.find(t => t.id === this.currentTaskId);
+    if (!task) return;
+    const statuses = this.boardColumns.map(c => c.id);
+    const idx = statuses.indexOf(task.status);
+    const oldStatus = task.status;
+    task.status = statuses[(idx + 1) % statuses.length];
+    const panelStatus = document.getElementById('panel-status');
+    if (panelStatus) panelStatus.value = task.status;
+    task.activityLog = task.activityLog || [];
+    if (oldStatus !== task.status) task.activityLog.push({ text: `Status changed to ${task.status}`, timestamp: new Date().toISOString() });
+    if (task.status === 'done' && oldStatus !== 'done') this.celebrate();
+    this.save(); this.updateContextChips(task); this.renderActivityTimeline(task); this.render();
+  },
+
+  cycleChipPriority() {
+    if (!this.currentTaskId) return;
+    const task = this.tasks.find(t => t.id === this.currentTaskId);
+    if (!task) return;
+    const pris = ['', 'p3', 'p2', 'p1', 'p0'];
+    const idx = pris.indexOf(task.priority);
+    task.priority = pris[(idx + 1) % pris.length];
+    const panelPriority = document.getElementById('panel-priority');
+    if (panelPriority) panelPriority.value = task.priority;
+    this.save(); this.updateContextChips(task); this.render();
+  },
+
+  showChipDropdown(type) {
+    const dd = document.getElementById('chip-dropdown');
+    const chip = document.getElementById('chip-' + type);
+    const task = this.tasks.find(t => t.id === this.currentTaskId);
+    if (!task || !dd || !chip) return;
+
+    let html = '';
+    if (type === 'assignee') {
+      html = this.users.map(u => `<div class="chip-dd-item ${u.id === task.assigneeId ? 'active' : ''}" onclick="app.setChipValue('assignee','${u.id}')"><div class="chip-avatar" style="background:${u.color}">${this.initials(u.name)}</div> ${this.esc(u.name)}</div>`).join('');
+      html += `<div class="chip-dd-item ${!task.assigneeId ? 'active' : ''}" onclick="app.setChipValue('assignee','')">Unassigned</div>`;
+    } else if (type === 'project') {
+      html = this.projects.map(p => `<div class="chip-dd-item ${p.id === task.projectId ? 'active' : ''}" onclick="app.setChipValue('project','${p.id}')"><span class="chip-dot" style="background:${p.color}"></span> ${this.esc(p.name)}</div>`).join('');
+      html += `<div class="chip-dd-item ${!task.projectId ? 'active' : ''}" onclick="app.setChipValue('project','')">No project</div>`;
+    } else if (type === 'due') {
+      html = `<div style="padding:8px"><input type="date" id="chip-date-input" value="${task.dueDate||''}" onchange="app.setChipValue('due',this.value)" class="chip-date-input"><div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap"><button class="quickpick-btn" onclick="app.setChipDate('today')">Today</button><button class="quickpick-btn" onclick="app.setChipDate('tomorrow')">Tomorrow</button><button class="quickpick-btn" onclick="app.setChipDate('nextweek')">Next Week</button><button class="quickpick-btn" onclick="app.setChipDate('none')">None</button></div></div>`;
+    }
+
+    dd.innerHTML = html;
+    const rect = chip.getBoundingClientRect();
+    const panelMain = document.querySelector('.panel-main');
+    const panelRect = panelMain ? panelMain.getBoundingClientRect() : { top: 0, left: 0 };
+    dd.style.top = (rect.bottom - panelRect.top + 4) + 'px';
+    dd.style.left = Math.max(0, rect.left - panelRect.left) + 'px';
+    dd.classList.remove('hidden');
+
+    const closeHandler = (e) => {
+      if (!dd.contains(e.target) && !chip.contains(e.target)) {
+        dd.classList.add('hidden');
+        document.removeEventListener('click', closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 0);
+  },
+
+  setChipValue(type, value) {
+    const task = this.tasks.find(t => t.id === this.currentTaskId);
+    if (!task) return;
+    if (type === 'assignee') { task.assigneeId = value; const el = document.getElementById('panel-assignee'); if (el) el.value = value; }
+    else if (type === 'project') { task.projectId = value; const el = document.getElementById('panel-project'); if (el) el.value = value; }
+    else if (type === 'due') { task.dueDate = value; const el = document.getElementById('panel-due'); if (el) el.value = value; }
+    document.getElementById('chip-dropdown')?.classList.add('hidden');
+    this.save(); this.updateContextChips(task); this.render();
+  },
+
+  setChipDate(preset) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let d = '';
+    if (preset === 'today') d = today.toISOString().split('T')[0];
+    else if (preset === 'tomorrow') { today.setDate(today.getDate() + 1); d = today.toISOString().split('T')[0]; }
+    else if (preset === 'nextweek') { today.setDate(today.getDate() + 7); d = today.toISOString().split('T')[0]; }
+    this.setChipValue('due', d);
+  },
+
   // ===== CONTEXT CHIPS =====
   updateContextChips(task) {
     const statusColors = { 'todo': 'var(--todo)', 'in-progress': 'var(--progress)', 'done': 'var(--done)' };
