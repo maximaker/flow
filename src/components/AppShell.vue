@@ -308,7 +308,7 @@
           <div id="my-tasks-list" class="task-list-view"></div>
           <div class="inline-add-row" id="inline-add-row">
             <div class="inline-add-check"></div>
-            <input type="text" id="inline-add-input" placeholder="+ Add a task..." class="inline-add-input">
+            <input type="text" id="inline-add-input" placeholder="Add a task — press Enter to save" class="inline-add-input">
           </div>
         </div>
 

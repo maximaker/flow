@@ -227,6 +227,14 @@ export const renderActions = {
       const isCollapsed = !this.expandedTasks.includes(t.id);
       const indent = level * 24 + 12;
 
+      // Determine status-dot class from column position
+      const colIdx = this.boardColumns.findIndex(c => c.id === t.status);
+      const colClass = colIdx === this.boardColumns.length - 1
+        ? 'col-done'
+        : colIdx > 0
+          ? 'col-progress'
+          : 'col-todo';
+
       // For subtasks (level > 0), hide meta that matches parent
       const showPriority = level > 0 && parentTask ? (t.priority && t.priority !== parentTask.priority) : !!t.priority;
       const showProject = level > 0 && parentTask ? (proj && t.projectId !== parentTask.projectId) : !!proj;
@@ -234,6 +242,7 @@ export const renderActions = {
       const filteredLabelIds = level > 0 && parentTask ? (t.labelIds||[]).filter(lid => !(parentTask.labelIds||[]).includes(lid)) : (t.labelIds||[]);
 
       const hasMeta = showPriority || showProject || t.dueDate || blocked || filteredLabelIds.length || showEffort;
+      const isOverdue = t.dueDate && this.dueDateClass(t.dueDate) === 'overdue' && t.status !== 'done' && colIdx !== this.boardColumns.length - 1;
 
       let html = `<div class="task-list-item ${sel?'selected':''}" data-task-id="${t.id}" data-level="${level}" draggable="true"
         ondragstart="app.onListDragStart(event,'${t.id}')" ondragend="app.onListDragEnd(event)"
@@ -246,11 +255,11 @@ export const renderActions = {
           </button>` : '<span class="task-tree-spacer"></span>'}
           <div class="task-list-info-wrap">
             <div class="task-select-check ${sel?'checked':''}" onclick="event.stopPropagation();app.toggleSelect('${t.id}')"></div>
-            <div class="task-check ${t.status==='done'?'done':''}" onclick="event.stopPropagation();app.toggleTaskStatus('${t.id}')">
+            <div class="task-check ${colClass}" onclick="event.stopPropagation();app.toggleTaskStatus('${t.id}')">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <div class="task-list-info">
-              <span class="task-list-name ${t.status==='done'?'completed':''}" ondblclick="event.stopPropagation();app.startInlineEdit(event,'${t.id}')">${this.esc(t.title)}</span>
+              <span class="task-list-name ${colClass === 'col-done' ? 'completed' : ''}" ondblclick="event.stopPropagation();app.startInlineEdit(event,'${t.id}')">${this.esc(t.title)}</span>
             </div>
           </div>
           <div class="task-list-right">
@@ -263,7 +272,7 @@ export const renderActions = {
             ${showPriority ? this.priorityBadge(t.priority) : ''}
             ${showProject && proj ? `<span class="task-list-project" style="background:${this.safeColor(proj.color)}20;color:${this.safeColor(proj.color)}">${this.esc(proj.name)}</span>` : ''}
             ${t.dueDate ? `<span class="task-list-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}">${this.formatDate(t.dueDate)}</span>` : ''}
-            ${t.dueDate && this.dueDateClass(t.dueDate) === 'overdue' && t.status !== 'done' ? `<button class="rescue-btn" onclick="event.stopPropagation();app.rescueTask('${t.id}')" title="Reschedule to today">\u2192 Today</button>` : ''}
+            ${isOverdue ? `<button class="rescue-btn" onclick="event.stopPropagation();app.rescueTask('${t.id}')" title="Move to today">Reschedule?</button>` : ''}
             ${blocked ? '<span class="blocked-indicator">Blocked</span>' : ''}
             ${showEffort ? this.effortBadge(t.effort) : ''}
             ${this.renderLabelTags(filteredLabelIds)}
@@ -280,21 +289,55 @@ export const renderActions = {
     };
 
     const isFiltered = search || fProj || fStatus || fPriority || fLabel || fAssignee;
-    document.getElementById('my-tasks-list').innerHTML = rootTasks.length
-      ? rootTasks.map(t => renderTaskRow(t, 0)).join('')
-      : isFiltered
-        ? `<div class="empty-state-rich">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <p>No tasks match your search</p>
-            <p class="empty-state-sub">Try different keywords or remove a filter.</p>
-            <button class="btn-secondary" onclick="app.clearFilters()">Clear filters</button>
-          </div>`
-        : `<div class="empty-state-rich">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
-            <p>Your task list is clear — nice work!</p>
-            <p class="empty-state-sub">Ready to plan something new?</p>
-            <button class="btn-primary" onclick="app.showTaskModal()">Create your first task</button>
-          </div>`;
+    const emptyFiltered = `<div class="empty-state-rich">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <p>No tasks match your search</p>
+        <p class="empty-state-sub">Try different keywords or remove a filter.</p>
+        <button class="btn-secondary" onclick="app.clearFilters()">Clear filters</button>
+      </div>`;
+    const emptyDefault = `<div class="empty-state-rich">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+        <p>Your task list is clear — nice work!</p>
+        <p class="empty-state-sub">Ready to plan something new?</p>
+        <button class="btn-primary" onclick="app.showTaskModal()">Create your first task</button>
+      </div>`;
+
+    if (!rootTasks.length) {
+      document.getElementById('my-tasks-list').innerHTML = isFiltered ? emptyFiltered : emptyDefault;
+    } else if (sortPref === 'status' && !fStatus) {
+      // Group tasks into column-based sections for clear mental model
+      const seen = new Set();
+      let sectionsHtml = '';
+      this.boardColumns.forEach((col, colIdx) => {
+        const sectionTasks = rootTasks.filter(t => t.status === col.id);
+        if (!sectionTasks.length) return;
+        sectionTasks.forEach(t => seen.add(t.id));
+        const dotClass = colIdx === this.boardColumns.length - 1 ? 'col-done' : colIdx === 0 ? 'col-todo' : 'col-progress';
+        sectionsHtml += `<div class="task-status-section">
+          <div class="task-status-section-header">
+            <span class="task-status-dot ${dotClass}"></span>
+            <span class="task-status-section-name">${this.esc(col.name)}</span>
+            <span class="task-status-section-count">${sectionTasks.length}</span>
+          </div>
+          ${sectionTasks.map(t => renderTaskRow(t, 0)).join('')}
+        </div>`;
+      });
+      // Catch any tasks with an unknown status (shouldn't happen, but defensive)
+      const orphans = rootTasks.filter(t => !seen.has(t.id));
+      if (orphans.length) {
+        sectionsHtml += `<div class="task-status-section">
+          <div class="task-status-section-header">
+            <span class="task-status-dot col-todo"></span>
+            <span class="task-status-section-name">Other</span>
+            <span class="task-status-section-count">${orphans.length}</span>
+          </div>
+          ${orphans.map(t => renderTaskRow(t, 0)).join('')}
+        </div>`;
+      }
+      document.getElementById('my-tasks-list').innerHTML = sectionsHtml;
+    } else {
+      document.getElementById('my-tasks-list').innerHTML = rootTasks.map(t => renderTaskRow(t, 0)).join('');
+    }
 
     this.updateBulkBar();
   },
