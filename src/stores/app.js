@@ -599,6 +599,168 @@ export const useAppStore = defineStore('app', {
   },
 
 
+  // ===== BULK IMPORT =====
+  showBulkImport() {
+    const sel = document.getElementById('bulk-import-project');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">No project</option>' + this.projects.map(p => `<option value="${p.id}">${this.esc(p.name)}</option>`).join('');
+    if (this.projects.length === 1) sel.value = this.projects[0].id;
+    const textEl = document.getElementById('bulk-import-text');
+    if (textEl) textEl.value = '';
+    document.getElementById('bulk-import-overlay')?.classList.add('show');
+    setTimeout(() => document.getElementById('bulk-import-text')?.focus(), 100);
+  },
+
+  closeBulkImport() {
+    document.getElementById('bulk-import-overlay')?.classList.remove('show');
+  },
+
+  executeBulkImport() {
+    const textEl = document.getElementById('bulk-import-text');
+    const projectEl = document.getElementById('bulk-import-project');
+    const text = textEl?.value || '';
+    const projectId = projectEl?.value || '';
+    if (!text.trim()) { this.toast('Paste some tasks first', 'error'); return; }
+
+    const lines = text.split('\n').filter(l => l.trim());
+    if (!lines.length) { this.toast('No tasks found', 'error'); return; }
+
+    // Parse indentation to determine nesting level
+    const parsed = lines.map(line => {
+      const expanded = line.replace(/\t/g, '  ');
+      const leadingSpaces = expanded.match(/^(\s*)/)[1].length;
+      let title = expanded.trim()
+        .replace(/^[-*+]\s+/, '')
+        .replace(/^\d+[.)]\s+/, '')
+        .replace(/^\[[ x]\]\s*/i, '')
+        .trim();
+      if (!title) return null;
+      return { title, indent: Math.floor(leadingSpaces / 2) };
+    }).filter(Boolean);
+
+    if (!parsed.length) { this.toast('No valid tasks found', 'error'); return; }
+
+    // Normalize: first item at level 0, cap at 4 levels
+    const minIndent = Math.min(...parsed.map(p => p.indent));
+    parsed.forEach(p => p.indent = Math.min(p.indent - minIndent, 4));
+
+    // Build tree by tracking parent stack
+    const parentStack = [];
+    let created = 0;
+
+    parsed.forEach(item => {
+      while (parentStack.length > 0 && parentStack[parentStack.length - 1].level >= item.indent) {
+        parentStack.pop();
+      }
+      const parentId = parentStack.length > 0 ? parentStack[parentStack.length - 1].id : '';
+      const siblings = this.tasks.filter(t => (t.parentId || '') === parentId);
+
+      const task = {
+        id: this.generateId(),
+        title: item.title, description: '', status: this.boardColumns[0]?.id || 'todo',
+        projectId, assigneeId: '', dueDate: '', priority: '',
+        labelIds: [], blockedBy: [], order: siblings.length,
+        parentId, attachments: [], comments: [],
+        activityLog: [{ text: 'Created via bulk import', timestamp: new Date().toISOString() }],
+        createdAt: new Date().toISOString().split('T')[0],
+      };
+
+      this.tasks.push(task);
+      parentStack.push({ id: task.id, level: item.indent });
+      created++;
+    });
+
+    this.save();
+    this.closeBulkImport();
+    this.render();
+    this.toast(`Imported ${created} task${created !== 1 ? 's' : ''}`);
+  },
+
+  // ===== BOARD COLUMN MANAGEMENT =====
+  saveBoardColumns() {
+    localStorage.setItem('fb_board_columns', JSON.stringify(this.boardColumns));
+    this._syncSettings();
+  },
+
+  showColumnManager() {
+    const overlay = document.getElementById('column-manager-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('hidden');
+    overlay.classList.add('show');
+    this.renderColumnManager();
+  },
+
+  closeColumnManager() {
+    const overlay = document.getElementById('column-manager-overlay');
+    if (!overlay) return;
+    overlay.classList.add('hidden');
+    overlay.classList.remove('show');
+  },
+
+  renderColumnManager() {
+    const body = document.getElementById('column-manager-body');
+    if (!body) return;
+    body.innerHTML = this.boardColumns.map((col, i) => `
+      <div class="column-manager-item" data-col-id="${col.id}">
+        <input type="text" value="${this.esc(col.name)}" onchange="app.renameBoardColumn('${col.id}', this.value)">
+        <div class="column-manager-actions">
+          ${i > 0 ? `<button onclick="app.moveBoardColumn('${col.id}', -1)" title="Move up">&#9650;</button>` : '<button disabled style="opacity:0.3">&#9650;</button>'}
+          ${i < this.boardColumns.length - 1 ? `<button onclick="app.moveBoardColumn('${col.id}', 1)" title="Move down">&#9660;</button>` : '<button disabled style="opacity:0.3">&#9660;</button>'}
+          <button class="danger" onclick="app.removeBoardColumn('${col.id}')" title="Delete column">&times;</button>
+        </div>
+      </div>`).join('');
+  },
+
+  addBoardColumn() {
+    const name = prompt('Column name:');
+    if (!name || !name.trim()) return;
+    const id = this.generateId();
+    this.boardColumns.push({ id, name: name.trim() });
+    this.saveBoardColumns();
+    this.renderColumnManager();
+    this.renderBoard();
+    this.populateStatusSelects();
+  },
+
+  async removeBoardColumn(id) {
+    if (this.boardColumns.length <= 1) { this.toast('Cannot remove last column', 'error'); return; }
+    const tasksInCol = this.tasks.filter(t => t.status === id);
+    if (tasksInCol.length > 0) {
+      if (!await this.confirm(`${tasksInCol.length} task(s) use this status. Move them to the first column?`, 'Remove column', 'Move & remove')) return;
+      const firstCol = this.boardColumns.find(c => c.id !== id);
+      tasksInCol.forEach(t => t.status = firstCol.id);
+      this.save();
+    }
+    this.boardColumns = this.boardColumns.filter(c => c.id !== id);
+    this.saveBoardColumns();
+    this.renderColumnManager();
+    this.renderBoard();
+    this.populateStatusSelects();
+  },
+
+  renameBoardColumn(id, name) {
+    const col = this.boardColumns.find(c => c.id === id);
+    if (col && name.trim()) {
+      col.name = name.trim();
+      this.saveBoardColumns();
+      this.renderBoard();
+      this.populateStatusSelects();
+    }
+  },
+
+  moveBoardColumn(id, direction) {
+    const idx = this.boardColumns.findIndex(c => c.id === id);
+    if (idx < 0) return;
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= this.boardColumns.length) return;
+    const temp = this.boardColumns[idx];
+    this.boardColumns[idx] = this.boardColumns[newIdx];
+    this.boardColumns[newIdx] = temp;
+    this.saveBoardColumns();
+    this.renderColumnManager();
+    this.renderBoard();
+  },
+
   // ===== DEPENDENCY HELPERS =====
   isBlocked(task) {
     if (!task.blockedBy?.length) return false;
