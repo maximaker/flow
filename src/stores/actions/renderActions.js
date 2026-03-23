@@ -524,7 +524,7 @@ export const renderActions = {
             </div>
           </div>
         </div>`;
-      }).join('') : '<div class="column-cards-empty">Drag tasks here or click + to add</div>';
+      }).join('') : `<div class="column-cards-empty">Nothing here yet<br><span style="font-size:11px;opacity:0.7">Drag a card in, or use +</span></div>`;
 
       return `<div class="kanban-column" data-status="${status}">
         <div class="column-header">
@@ -1031,7 +1031,7 @@ export const renderActions = {
               </div>
             </div>
           </div>`;
-        }).join('') : '<div class="column-cards-empty">Drag tasks here or click + to add</div>';
+        }).join('') : `<div class="column-cards-empty">Nothing here yet<br><span style="font-size:11px;opacity:0.7">Drag a card in, or use +</span></div>`;
 
         return `<div class="kanban-column" data-status="${status}">
           <div class="column-header">
