@@ -360,6 +360,25 @@ export const useAppStore = defineStore('app', {
     document.body.classList.remove('sidebar-open');
   },
 
+  openMobileFilters() {
+    // Sync mobile selects with current desktop values
+    const sync = (mId, dId) => {
+      const m = document.getElementById(mId), d = document.getElementById(dId);
+      if (m && d) { m.innerHTML = d.innerHTML; m.value = d.value; }
+    };
+    sync('mobile-sort-select', 'sort-select');
+    sync('mobile-filter-project', 'filter-project');
+    sync('mobile-filter-assignee', 'filter-assignee');
+    sync('mobile-filter-status', 'filter-status');
+    sync('mobile-filter-priority', 'filter-priority');
+    sync('mobile-filter-label', 'filter-label');
+    document.getElementById('mobile-filter-overlay')?.classList.add('show');
+  },
+
+  closeMobileFilters() {
+    document.getElementById('mobile-filter-overlay')?.classList.remove('show');
+  },
+
   toggleFocusMode() {
     this.focusMode = !this.focusMode;
     const btn = document.getElementById('focus-mode-btn');

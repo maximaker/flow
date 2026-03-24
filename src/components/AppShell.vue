@@ -283,6 +283,7 @@
         <!-- My Tasks View -->
         <div class="view" id="view-my-tasks">
           <div class="my-tasks-header">
+            <!-- Desktop action buttons -->
             <div class="my-tasks-header-left">
               <button class="btn-primary" onclick="app.openConvTask()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -298,6 +299,20 @@
                 Focus
               </button>
             </div>
+
+            <!-- Mobile: single filter CTA that opens overlay -->
+            <div class="mobile-filter-bar">
+              <button class="mobile-sort-chip" id="mobile-sort-chip" onclick="app.openMobileFilters()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
+                Sort &amp; Filter
+              </button>
+              <button id="mobile-focus-btn" class="mobile-focus-chip" onclick="app.toggleFocusMode()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                Focus
+              </button>
+            </div>
+
+            <!-- Desktop filter controls (hidden on mobile) -->
             <div class="filter-group">
               <div class="filter-main">
                 <select id="filter-project" class="filter-select"><option value="">All Projects</option></select>
@@ -330,6 +345,58 @@
                   <option value="p3">Low</option>
                 </select>
                 <select id="filter-label" class="filter-select"><option value="">All Labels</option></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mobile filter overlay (full-screen bottom sheet) -->
+          <div class="mobile-filter-overlay" id="mobile-filter-overlay" onclick="if(event.target===this)app.closeMobileFilters()">
+            <div class="mobile-filter-sheet">
+              <div class="mobile-filter-sheet-header">
+                <h3>Sort &amp; filter</h3>
+                <button class="btn-icon" onclick="app.closeMobileFilters()">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div class="mobile-filter-sheet-body">
+                <label class="mobile-filter-label">Sort by</label>
+                <select id="mobile-sort-select" class="mobile-filter-select" onchange="document.getElementById('sort-select').value=this.value;app.render()">
+                  <option value="status">Status</option>
+                  <option value="due">Due date</option>
+                  <option value="priority">Priority</option>
+                  <option value="alpha">A–Z</option>
+                  <option value="created">Newest first</option>
+                  <option value="effort-asc">Quick wins</option>
+                </select>
+                <label class="mobile-filter-label">Project</label>
+                <select id="mobile-filter-project" class="mobile-filter-select" onchange="document.getElementById('filter-project').value=this.value;app.render()">
+                  <option value="">All projects</option>
+                </select>
+                <label class="mobile-filter-label">Assigned to</label>
+                <select id="mobile-filter-assignee" class="mobile-filter-select" onchange="document.getElementById('filter-assignee').value=this.value;app.render()">
+                  <option value="me">Me</option>
+                  <option value="">Anyone</option>
+                </select>
+                <label class="mobile-filter-label">Status</label>
+                <select id="mobile-filter-status" class="mobile-filter-select" onchange="document.getElementById('filter-status').value=this.value;app.render()">
+                  <option value="">All</option>
+                </select>
+                <label class="mobile-filter-label">Priority</label>
+                <select id="mobile-filter-priority" class="mobile-filter-select" onchange="document.getElementById('filter-priority').value=this.value;app.render()">
+                  <option value="">All</option>
+                  <option value="p0">Urgent</option>
+                  <option value="p1">High</option>
+                  <option value="p2">Medium</option>
+                  <option value="p3">Low</option>
+                </select>
+                <label class="mobile-filter-label">Label</label>
+                <select id="mobile-filter-label" class="mobile-filter-select" onchange="document.getElementById('filter-label').value=this.value;app.render()">
+                  <option value="">All</option>
+                </select>
+              </div>
+              <div class="mobile-filter-sheet-footer">
+                <button class="btn-secondary" onclick="app.clearFilters();app.closeMobileFilters()">Clear all</button>
+                <button class="btn-primary" onclick="app.closeMobileFilters()">Done</button>
               </div>
             </div>
           </div>
@@ -528,12 +595,12 @@
         </span>
         <span>My Tasks</span>
       </a>
-      <button class="bottom-nav-fab" onclick="app.showTaskModal()" aria-label="Add task">
+      <button class="bottom-nav-fab" onclick="app.openConvTask()" aria-label="Add task">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
-      <a href="#" class="bottom-nav-item" data-view="board" aria-label="Board">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        <span>Board</span>
+      <a href="#" class="bottom-nav-item" data-view="timeline" aria-label="Timeline">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Timeline</span>
       </a>
       <a href="#" class="bottom-nav-item" data-view="settings" aria-label="Settings">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>

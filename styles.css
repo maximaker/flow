@@ -2623,6 +2623,12 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .bottom-nav {
   display: none; /* shown via media query on ≤767px */
 }
+.mobile-filter-bar {
+  display: none; /* shown via media query on ≤767px */
+}
+.mobile-filter-overlay {
+  display: none; /* shown via JS + media query on ≤767px */
+}
 
 /* ============================================================
    TABLET  768 – 1023px
@@ -2959,8 +2965,8 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .task-list-meta .label-tag { font-size: 9px; padding: 0 3px; }
   .task-list-meta .rescue-btn { font-size: 9px; padding: 0 4px; }
 
-  /* Inline add row */
-  .inline-add-row { margin-top: 4px; padding: 8px 10px; }
+  /* Inline add row — hidden on mobile, FAB is the add entry point */
+  .inline-add-row { display: none; }
 
   /* ── Home view ── */
   .home-grid { grid-template-columns: 1fr !important; gap: 10px; }
@@ -2970,20 +2976,101 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .stat-card { padding: 12px; }
   .stat-card .stat-value { font-size: 22px; }
 
-  /* ── My Tasks header — compact filter bar ── */
-  .my-tasks-header { flex-direction: column; gap: 6px; margin-bottom: 8px; }
-  .my-tasks-header-left { flex-wrap: wrap; gap: 4px; }
-  .my-tasks-header-left .btn-primary,
-  .my-tasks-header-left .btn-secondary { font-size: 11px; padding: 5px 10px; }
+  /* ══════════════════════════════════════════════════════
+     MY TASKS HEADER — mobile filter system
+     Desktop buttons + filter-group hidden.
+     Replaced by a single-line chip bar + overlay sheet.
+     ══════════════════════════════════════════════════════ */
+  .my-tasks-header { flex-direction: row; gap: 0; margin-bottom: 6px; }
+  .my-tasks-header-left { display: none !important; }  /* Add Task / Brain dump / Focus — not needed, FAB + overlay */
+  .filter-group { display: none !important; }           /* desktop filters hidden */
   .btn-kbd { display: none; }
-  .filter-group { gap: 4px; }
-  .filter-main { flex-wrap: wrap; gap: 4px; }
-  .filter-select { font-size: 12px; padding: 4px 6px; flex: 1 1 auto; min-width: 0; }
-  .filter-more-btn { font-size: 11px; }
-  .filter-extra { flex-wrap: wrap; gap: 4px; }
+
+  /* Mobile filter bar: compact chip row */
+  .mobile-filter-bar {
+    display: flex !important;
+    gap: 6px; width: 100%;
+  }
+  .mobile-sort-chip, .mobile-focus-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 10px; border-radius: 16px;
+    font-size: 12px; font-weight: 500;
+    background: var(--bg-secondary); color: var(--text-secondary);
+    border: 1px solid var(--border); cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-sort-chip:active, .mobile-focus-chip:active {
+    background: var(--bg-hover);
+  }
+  .mobile-focus-chip.active {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+
+  /* Mobile filter overlay — full-screen bottom sheet */
+  .mobile-filter-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 200;
+    align-items: flex-end; justify-content: center;
+  }
+  .mobile-filter-overlay.show { display: flex; }
+  .mobile-filter-sheet {
+    width: 100%; max-height: 85dvh;
+    background: var(--bg-white);
+    border-radius: 16px 16px 0 0;
+    display: flex; flex-direction: column;
+    animation: slideUpModal 0.25s cubic-bezier(0.4,0,0.2,1);
+    overflow: hidden;
+  }
+  .mobile-filter-sheet-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 10px; border-bottom: 1px solid var(--border-light);
+  }
+  .mobile-filter-sheet-header h3 { font-size: 15px; font-weight: 600; }
+  .mobile-filter-sheet-body {
+    padding: 14px 16px; overflow-y: auto; flex: 1;
+  }
+  .mobile-filter-label {
+    display: block; font-size: 11px; font-weight: 600;
+    color: var(--text-secondary); text-transform: uppercase;
+    letter-spacing: 0.04em; margin: 12px 0 4px;
+  }
+  .mobile-filter-label:first-child { margin-top: 0; }
+  .mobile-filter-select {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 10px;
+    font-size: 15px; background: var(--bg); color: var(--text);
+    font-family: inherit; appearance: auto;
+  }
+  .mobile-filter-sheet-footer {
+    display: flex; gap: 8px; padding: 12px 16px;
+    border-top: 1px solid var(--border-light);
+  }
+  .mobile-filter-sheet-footer .btn-secondary,
+  .mobile-filter-sheet-footer .btn-primary { flex: 1; padding: 10px; font-size: 14px; }
 
   /* ── Section headers in My Tasks (grouped by status) ── */
   .task-section-header { font-size: 12px; padding: 6px 10px; margin-top: 8px; }
+
+  /* ══════════════════════════════════════════════════════
+     TIMELINE — mobile-optimized
+     Vertical list instead of horizontal gantt chart.
+     ══════════════════════════════════════════════════════ */
+  .timeline-controls { flex-wrap: wrap; gap: 4px; }
+  .timeline-controls .filter-select { font-size: 12px; padding: 4px 8px; }
+  .timeline-controls .btn-secondary { font-size: 12px; padding: 4px 8px; min-height: 32px; }
+  .timeline-container {
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+  }
+  .timeline-label-col { width: 120px; font-size: 11px; padding: 6px 8px; }
+  .timeline-day { width: 32px; font-size: 9px; padding: 4px 0; }
+  .timeline-row-label { width: 120px; font-size: 11px; padding: 6px 8px; }
+  .timeline-row-cells { min-height: 30px; }
+  .timeline-cell { width: 32px; }
+  .timeline-bar { top: 4px; height: 22px; font-size: 9px; padding: 0 4px; }
 
   /* ── Settings ── */
   .settings-layout { flex-direction: column; height: auto; }
@@ -3092,3 +3179,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 [data-theme="dark"] .filter-select { background: var(--bg-secondary); border-color: var(--border); color: var(--text); }
 [data-theme="dark"] .task-card { border-color: var(--border); }
 [data-theme="dark"] .inline-add-row input { background: var(--bg-secondary); color: var(--text); }
+[data-theme="dark"] .mobile-sort-chip, [data-theme="dark"] .mobile-focus-chip { background: var(--bg-secondary); border-color: var(--border); color: var(--text-secondary); }
+[data-theme="dark"] .mobile-filter-sheet { background: var(--bg-card); }
+[data-theme="dark"] .mobile-filter-overlay { background: rgba(0,0,0,0.55); }
+[data-theme="dark"] .mobile-filter-select { background: var(--bg-secondary); border-color: var(--border); color: var(--text); }
