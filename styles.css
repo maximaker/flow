@@ -2611,6 +2611,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
   background: rgba(0,0,0,0.35);
   z-index: 29;
   opacity: 0;
+  pointer-events: none;        /* CRITICAL: invisible to touches when inactive */
   transition: opacity 0.25s;
 }
 .sidebar-backdrop.show { opacity: 1; pointer-events: auto; }
@@ -2647,9 +2648,10 @@ input:focus, select:focus, textarea:focus { outline: none; }
   }
 
   /* === Root layout ===
+     Use dvh so height excludes the mobile browser address bar.
      overflow-x: clip prevents horizontal bleed without blocking
      touch-scroll on children (overflow: hidden would kill it on iOS) */
-  #app { position: relative; overflow-x: clip; }
+  #app { height: 100dvh; overflow-x: clip; }
 
   /* === Sidebar becomes a mobile drawer === */
   .sidebar {
@@ -2672,21 +2674,19 @@ input:focus, select:focus, textarea:focus { outline: none; }
   /* Show backdrop */
   .sidebar-backdrop { display: block; }
 
-  /* === Main content: no left offset, full height, add bottom padding === */
+  /* === Main content: no left offset, add bottom padding ===
+     KEEP overflow: hidden (the base value) — it's REQUIRED for flex scroll
+     containment. Without it, content-area expands infinitely instead of scrolling. */
   .main-content {
     margin-left: 0 !important;
-    /* Allow content-area inside to scroll — desktop uses overflow:hidden
-       on main-content, but on mobile the flex child must be scrollable */
-    overflow: visible !important;
-    height: 100dvh;
-    height: 100vh;
+    min-height: 0;     /* flex shrink fix — allow children to scroll */
   }
   .content-area {
     padding: 16px;
-    padding-bottom: calc(var(--bottom-nav-height) + 16px);
-    /* Ensure touch scroll works even when parent overflow is clipped */
+    padding-bottom: calc(var(--bottom-nav-height) + 24px);
     -webkit-overflow-scrolling: touch;
     overflow-y: auto;
+    min-height: 0;     /* same flex shrink fix */
   }
 
   /* === Topbar === */
@@ -2814,15 +2814,18 @@ input:focus, select:focus, textarea:focus { outline: none; }
 
   /* === Kanban board → horizontal scroll, compact cards === */
   .kanban-board {
+    display: flex;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
     height: auto;
-    min-height: calc(100dvh - 180px);
+    min-height: calc(100dvh - 200px);
     padding-bottom: 8px;
-    /* Snap to columns */
-    scroll-snap-type: x mandatory;
+    scroll-snap-type: x proximity;     /* proximity is friendlier than mandatory */
+    gap: 12px;
   }
   .kanban-column {
-    min-width: 82vw;
-    max-width: 86vw;
+    min-width: 80vw;
+    max-width: 84vw;
     scroll-snap-align: start;
     flex-shrink: 0;
   }
@@ -2838,18 +2841,53 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .home-grid { grid-template-columns: 1fr !important; gap: 12px; }
   .home-card { padding: 16px; }
 
-  /* === My Tasks view — tighter === */
-  .my-tasks-filters { flex-wrap: wrap; gap: 8px; }
-  .my-tasks-filters select, .my-tasks-filters button { font-size: 13px; }
+  /* === My Tasks view — mobile-friendly stacking === */
+  .my-tasks-header { flex-direction: column; gap: 10px; margin-bottom: 12px; }
+  .my-tasks-header-left { flex-wrap: wrap; gap: 6px; }
+  .my-tasks-header-left .btn-primary,
+  .my-tasks-header-left .btn-secondary { font-size: 12px; padding: 7px 12px; }
+  .my-tasks-header-left .btn-kbd { display: none; } /* hide keyboard shortcut badges */
+  .filter-group { gap: 6px; }
+  .filter-main { flex-wrap: wrap; gap: 6px; }
+  .filter-select { font-size: 13px; padding: 6px 8px; flex: 1 1 auto; min-width: 0; }
+  .filter-more-btn { font-size: 12px; }
+  .filter-extra { flex-wrap: wrap; gap: 6px; }
 
-  /* === Settings → stack sidebar + content === */
-  .settings-layout { flex-direction: column; }
-  .settings-sidebar { width: 100% !important; border-right: none; border-bottom: 1px solid var(--border); }
-  .settings-sidebar-menu { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 12px; }
-  .settings-menu-item { padding: 6px 12px; border-radius: 20px; font-size: 12px; }
+  /* Task list rows — comfortable touch targets */
+  .task-list-view { gap: 0; }
+  .task-list-item { padding: 12px; min-height: 52px; gap: 10px; }
+  .task-list-title { font-size: 14px; }
+
+  /* Inline add row at bottom */
+  .inline-add-row { margin-top: 8px; padding: 10px 12px; }
+
+  /* === Settings → stack sidenav horizontally, panes below === */
+  .settings-layout { flex-direction: column; height: auto; }
+  .settings-sidenav {
+    width: 100% !important;
+    flex-direction: row; flex-wrap: wrap;
+    gap: 4px; padding: 12px;
+    border-right: none; border-bottom: 1px solid var(--border);
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  .settings-sidenav-label { display: none; } /* hide section labels — too cramped */
+  .settings-sidenav-item {
+    padding: 7px 14px; border-radius: 20px; font-size: 12px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .settings-sidenav-item.active { background: var(--accent); color: #fff; }
+  .settings-panes { padding: 20px 16px; }
+  .settings-pane-header h2 { font-size: 16px; }
+
+  /* Settings rows — stack label and control vertically */
+  .settings-row { flex-direction: column; gap: 8px; align-items: flex-start; }
+  .settings-row-info { width: 100%; }
+
+  /* === Board header — wrap controls === */
+  .board-header { flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .board-header-left { flex-wrap: wrap; gap: 6px; }
 
   /* === Focus mode filter bar === */
-  .filter-main { flex-wrap: wrap; gap: 6px; }
 
   /* === Context chips in task panel === */
   .context-chips { flex-wrap: wrap; gap: 6px; }
