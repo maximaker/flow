@@ -2616,9 +2616,12 @@ input:focus, select:focus, textarea:focus { outline: none; }
 }
 .sidebar-backdrop.show { opacity: 1; pointer-events: auto; }
 
-/* ── Bottom navigation bar ── */
+/* ── Mobile-only elements — hidden on desktop ── */
+.mobile-header {
+  display: none; /* shown via media query on ≤767px */
+}
 .bottom-nav {
-  display: none; /* hidden on desktop — shown via media query */
+  display: none; /* shown via media query on ≤767px */
 }
 
 /* ============================================================
