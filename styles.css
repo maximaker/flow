@@ -1724,6 +1724,10 @@ input:focus, select:focus, textarea:focus { outline: none; }
 
 /* ===== Keyboard Shortcuts Hint ===== */
 .shortcuts-hint { position: fixed; bottom: 20px; right: 20px; width: 32px; height: 32px; border-radius: 50%; background: var(--bg-secondary); border: 1.5px solid var(--border); color: var(--text-light); font-size: 14px; font-weight: 600; cursor: pointer; z-index: 100; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+/* On mobile, float the shortcuts hint above the bottom nav bar */
+@media (max-width: 767px) {
+  .shortcuts-hint { bottom: calc(var(--bottom-nav-height, 60px) + 12px); z-index: 119; }
+}
 .shortcuts-hint:hover { background: var(--accent); color: white; border-color: var(--accent); }
 .shortcuts-overlay { display: none; position: absolute; bottom: 40px; right: 0; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 16px; width: 220px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); text-align: left; }
 .shortcuts-hint.open .shortcuts-overlay { display: block; }
@@ -2642,8 +2646,10 @@ input:focus, select:focus, textarea:focus { outline: none; }
     --bottom-nav-height: 60px;
   }
 
-  /* === Root layout === */
-  #app { position: relative; overflow: hidden; }
+  /* === Root layout ===
+     overflow-x: clip prevents horizontal bleed without blocking
+     touch-scroll on children (overflow: hidden would kill it on iOS) */
+  #app { position: relative; overflow-x: clip; }
 
   /* === Sidebar becomes a mobile drawer === */
   .sidebar {
@@ -2666,11 +2672,21 @@ input:focus, select:focus, textarea:focus { outline: none; }
   /* Show backdrop */
   .sidebar-backdrop { display: block; }
 
-  /* === Main content: no left offset, add bottom padding === */
-  .main-content { margin-left: 0 !important; }
+  /* === Main content: no left offset, full height, add bottom padding === */
+  .main-content {
+    margin-left: 0 !important;
+    /* Allow content-area inside to scroll — desktop uses overflow:hidden
+       on main-content, but on mobile the flex child must be scrollable */
+    overflow: visible !important;
+    height: 100dvh;
+    height: 100vh;
+  }
   .content-area {
     padding: 16px;
     padding-bottom: calc(var(--bottom-nav-height) + 16px);
+    /* Ensure touch scroll works even when parent overflow is clipped */
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
   }
 
   /* === Topbar === */
@@ -2703,14 +2719,16 @@ input:focus, select:focus, textarea:focus { outline: none; }
   /* Sync indicator text → icon only */
   .sync-status { font-size: 11px; padding: 3px 7px; }
 
-  /* === Bottom navigation bar === */
+  /* === Bottom navigation bar ===
+     z-index 120 keeps it above shortcuts-hint (100), slide-panel (60),
+     overlay (50) and all other fixed elements */
   .bottom-nav {
     display: flex;
     position: fixed; bottom: 0; left: 0; right: 0;
     height: var(--bottom-nav-height);
     background: var(--bg-white);
     border-top: 1px solid var(--border);
-    z-index: 20;
+    z-index: 120;
     align-items: stretch;
     /* Safe area inset for notched phones */
     padding-bottom: env(safe-area-inset-bottom);
