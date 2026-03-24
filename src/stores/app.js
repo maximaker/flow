@@ -92,7 +92,8 @@ export const useAppStore = defineStore('app', {
   timeAgo:           utils.timeAgo,
   priorityBadge:     utils.priorityBadge,
   effortBadge:       utils.effortBadge,
-  renderMarkdown:    utils.renderMarkdown,
+  renderMarkdown:      utils.renderMarkdown,
+  renderDescriptionMd: utils.renderDescriptionMd,
   _appendActivity(task, text) { utils.appendActivity(task, text); },
   _setMultiSelect(id, values)  { utils.setMultiSelect(id, values); },
 

@@ -568,9 +568,36 @@
             <div class="label-picker" id="panel-labels"></div>
           </div>
 
-          <!-- Description -->
-          <div class="panel-section panel-desc-section">
-            <textarea id="panel-description" placeholder="Add a description..." rows="3"></textarea>
+          <!-- Description — click-to-edit markdown editor -->
+          <div class="panel-section panel-desc-section" id="desc-section">
+
+            <!-- Preview mode (default) -->
+            <div id="desc-preview" class="desc-preview" onclick="app.editDescription()" role="button" tabindex="0"
+              onkeydown="if(event.key==='Enter'||event.key===' ')app.editDescription()">
+              <!-- Populated by renderDescriptionPreview() -->
+            </div>
+
+            <!-- Edit mode (hidden until clicked) -->
+            <div id="desc-editor" class="desc-editor hidden">
+              <div class="desc-toolbar">
+                <button class="desc-tb-btn" title="Bold (Ctrl+B)" onclick="app.descInsert('**','**')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 4h8a4 4 0 0 1 0 8H6z"/><path d="M6 12h9a4 4 0 0 1 0 8H6z"/></svg></button>
+                <button class="desc-tb-btn" title="Italic (Ctrl+I)" onclick="app.descInsert('*','*')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg></button>
+                <button class="desc-tb-btn" title="Heading" onclick="app.descInsert('## ','')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 12h16M4 6v12M20 6v12"/></svg></button>
+                <div class="desc-tb-divider"></div>
+                <button class="desc-tb-btn" title="Bullet list" onclick="app.descInsertLine('- ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+                <button class="desc-tb-btn" title="Checklist" onclick="app.descInsertLine('- [ ] ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="6" height="6" rx="1"/><polyline points="5 8 6.5 9.5 9 6.5"/><line x1="13" y1="8" x2="21" y2="8"/><rect x="3" y="14" width="6" height="6" rx="1"/><line x1="13" y1="17" x2="21" y2="17"/></svg></button>
+                <button class="desc-tb-btn" title="Inline code" onclick="app.descInsert('\`','\`')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></button>
+                <div class="desc-tb-divider"></div>
+                <span class="desc-tb-hint">Markdown</span>
+                <button class="desc-done-btn" onclick="app.blurDescription()">Done</button>
+              </div>
+              <textarea id="panel-description"
+                placeholder="Add a description…&#10;&#10;Supports **bold**, *italic*, ## headings&#10;- bullet lists&#10;- [ ] checklists&#10;- [x] checked items"
+                rows="8"
+                oninput="app.onDescInput()"
+                onkeydown="app.descKeydown(event)"></textarea>
+            </div>
+
           </div>
 
           <!-- Subtasks -->

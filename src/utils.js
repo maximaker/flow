@@ -93,21 +93,110 @@ export function effortBadge(e) {
 }
 
 /**
- * Lightweight Markdown → HTML (bold, italic, strikethrough, code, links, @mentions).
- * Input is HTML-escaped first so user content cannot inject raw tags.
+ * Inline Markdown → HTML (bold, italic, strikethrough, inline-code, links, @mentions).
+ * Expects already-escaped input.
+ */
+function inlineMd(html) {
+  html = html.replace(/@(\w+(?:\s\w+)?)/g, '<span class="mention-chip">@$1</span>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  html = html.replace(/~~(.+?)~~/g, '<s>$1</s>');
+  html = html.replace(/(?<!\w)\*([^*\n]+)\*(?!\w)/g, '<em>$1</em>');
+  html = html.replace(/(?<!\w)_([^_\n]+)_(?!\w)/g, '<em>$1</em>');
+  html = html.replace(/`([^`]+)`/g, '<code class="md-code">$1</code>');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a class="md-link" href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  return html;
+}
+
+/**
+ * Lightweight Markdown → HTML (inline only: bold, italic, strikethrough, code, links, @mentions).
+ * Used for comments and activity entries. Escapes input internally.
  */
 export function renderMarkdown(text) {
   if (!text) return '';
-  let html = esc(text);
-  html = html.replace(/@(\w+(?:\s\w+)?)/g, '<span class="mention-chip">@$1</span>');
-  html = html.replace(/\*\*(.+?)\*\*/g, '<span class="md-bold">$1</span>');
-  html = html.replace(/__(.+?)__/g, '<span class="md-bold">$1</span>');
-  html = html.replace(/~~(.+?)~~/g, '<span class="md-strike">$1</span>');
-  html = html.replace(/(?<!\w)\*([^*]+)\*(?!\w)/g, '<span class="md-italic">$1</span>');
-  html = html.replace(/(?<!\w)_([^_]+)_(?!\w)/g, '<span class="md-italic">$1</span>');
-  html = html.replace(/`([^`]+)`/g, '<span class="md-code">$1</span>');
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a class="md-link" href="$2" target="_blank" rel="noopener">$1</a>');
-  html = html.replace(/\n/g, '<br>');
+  return inlineMd(esc(text)).replace(/\n/g, '<br>');
+}
+
+/**
+ * Full block-level Markdown → HTML for task descriptions.
+ * Supports: headings (h1–h3), bullet lists, ordered lists, checklists,
+ * blockquotes, horizontal rules, and all inline formatting.
+ * Checklist checkboxes emit onclick="app.toggleDescCheck(N)" so they
+ * are directly clickable in the preview pane.
+ */
+export function renderDescriptionMd(text) {
+  if (!text) return '';
+  const lines = text.split('\n');
+  let html = '';
+  let listType = ''; // 'ul' | 'ol' | 'check' | ''
+
+  const closeList = () => {
+    if (listType === 'ul' || listType === 'check') html += '</ul>';
+    else if (listType === 'ol') html += '</ol>';
+    listType = '';
+  };
+
+  const openList = (type) => {
+    if (listType === type) return;
+    closeList();
+    if (type === 'ol') html += '<ol class="md-ol">';
+    else if (type === 'check') html += '<ul class="md-ul md-checklist">';
+    else html += '<ul class="md-ul">';
+    listType = type;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const escaped = esc(raw);
+
+    // Headings
+    if (/^### /.test(raw)) { closeList(); html += `<h3 class="md-h3">${inlineMd(esc(raw.slice(4)))}</h3>`; continue; }
+    if (/^## /.test(raw))  { closeList(); html += `<h2 class="md-h2">${inlineMd(esc(raw.slice(3)))}</h2>`; continue; }
+    if (/^# /.test(raw))   { closeList(); html += `<h1 class="md-h1">${inlineMd(esc(raw.slice(2)))}</h1>`; continue; }
+
+    // Horizontal rule
+    if (/^(---|\*\*\*|___)$/.test(raw.trim())) { closeList(); html += '<hr class="md-hr">'; continue; }
+
+    // Checklist  — must check before generic bullet
+    const chkM = raw.match(/^[-*] \[([ xX])\] (.*)/);
+    if (chkM) {
+      openList('check');
+      const done = chkM[1].toLowerCase() === 'x';
+      html += `<li class="md-check-item">` +
+        `<button class="md-checkbox${done ? ' checked' : ''}" onclick="app.toggleDescCheck(${i})" aria-label="${done ? 'Mark incomplete' : 'Mark complete'}"></button>` +
+        `<span class="md-check-label${done ? ' md-check-done' : ''}">${inlineMd(esc(chkM[2]))}</span>` +
+        `</li>`;
+      continue;
+    }
+
+    // Unordered list
+    const ulM = raw.match(/^[-*] (.*)/);
+    if (ulM) { openList('ul'); html += `<li>${inlineMd(esc(ulM[1]))}</li>`; continue; }
+
+    // Ordered list
+    const olM = raw.match(/^\d+\. (.*)/);
+    if (olM) { openList('ol'); html += `<li>${inlineMd(esc(olM[1]))}</li>`; continue; }
+
+    // Blockquote
+    if (raw.startsWith('> ')) {
+      closeList();
+      html += `<blockquote class="md-blockquote">${inlineMd(esc(raw.slice(2)))}</blockquote>`;
+      continue;
+    }
+
+    // Empty line → paragraph break spacer
+    if (raw.trim() === '') {
+      closeList();
+      html += '<div class="md-gap"></div>';
+      continue;
+    }
+
+    // Plain paragraph line
+    closeList();
+    html += `<p class="md-p">${inlineMd(escaped)}</p>`;
+  }
+
+  closeList();
   return html;
 }
 

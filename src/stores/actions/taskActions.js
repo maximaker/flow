@@ -181,6 +181,10 @@ export const taskActions = {
     document.getElementById('panel-project').value = task.projectId || '';
     document.getElementById('panel-status').value = task.status;
     document.getElementById('panel-description').value = task.description || '';
+    // Reset description editor to preview mode (hide editor, show rendered preview)
+    document.getElementById('desc-editor')?.classList.add('hidden');
+    document.getElementById('desc-preview')?.classList.remove('hidden');
+    this.renderDescriptionPreview(task);
     document.getElementById('panel-priority').value = task.priority || '';
     document.getElementById('panel-effort').value = task.effort || '';
     this._setMultiSelect('panel-blocked-by', task.blockedBy || []);
@@ -271,6 +275,184 @@ export const taskActions = {
     } else {
       this.toast('Changes saved', 'success');
     }
+  },
+
+  // ===== DESCRIPTION MARKDOWN EDITOR =====
+
+  /** Render the description preview pane from the current task's markdown */
+  renderDescriptionPreview(task) {
+    const preview = document.getElementById('desc-preview');
+    if (!preview) return;
+    const md = (task && task.description) ? task.description.trim() : '';
+    if (md) {
+      preview.innerHTML = this.renderDescriptionMd(md);
+      preview.classList.remove('empty');
+    } else {
+      preview.innerHTML = '<span class="desc-placeholder">Add a description… <em>supports **bold**, - lists, - [ ] checklists</em></span>';
+      preview.classList.add('empty');
+    }
+  },
+
+  /** Switch description section to edit mode */
+  editDescription() {
+    const preview  = document.getElementById('desc-preview');
+    const editor   = document.getElementById('desc-editor');
+    const textarea = document.getElementById('panel-description');
+    if (!preview || !editor || !textarea) return;
+    preview.classList.add('hidden');
+    editor.classList.remove('hidden');
+    textarea.focus();
+    // Put cursor at end
+    const len = textarea.value.length;
+    textarea.setSelectionRange(len, len);
+  },
+
+  /** Switch back to preview mode and save silently */
+  blurDescription() {
+    const preview = document.getElementById('desc-preview');
+    const editor  = document.getElementById('desc-editor');
+    if (!preview || !editor) return;
+    editor.classList.add('hidden');
+    preview.classList.remove('hidden');
+    // Persist
+    const task = this.tasks.find(t => t.id === this.currentTaskId);
+    if (task) {
+      const textarea = document.getElementById('panel-description');
+      task.description = textarea ? textarea.value : task.description;
+      this.renderDescriptionPreview(task);
+      this.save();
+    }
+  },
+
+  /** Auto-save + refresh preview while typing (debounced 600ms) */
+  onDescInput() {
+    clearTimeout(this._descSaveTimer);
+    this._descSaveTimer = setTimeout(() => {
+      const task = this.tasks.find(t => t.id === this.currentTaskId);
+      if (!task) return;
+      const textarea = document.getElementById('panel-description');
+      if (textarea) task.description = textarea.value;
+      this.save();
+    }, 600);
+  },
+
+  /** Smart keyboard handling inside the description textarea */
+  descKeydown(event) {
+    const ta = event.target;
+    // Escape → done
+    if (event.key === 'Escape') { event.preventDefault(); this.blurDescription(); return; }
+    // Ctrl/Cmd+B → bold
+    if ((event.ctrlKey || event.metaKey) && event.key === 'b') { event.preventDefault(); this.descInsert('**', '**'); return; }
+    // Ctrl/Cmd+I → italic
+    if ((event.ctrlKey || event.metaKey) && event.key === 'i') { event.preventDefault(); this.descInsert('*', '*'); return; }
+    // Enter → continue list/checklist on the current line
+    if (event.key === 'Enter') {
+      const { selectionStart } = ta;
+      const before = ta.value.slice(0, selectionStart);
+      const lines = before.split('\n');
+      const currentLine = lines[lines.length - 1];
+      // Checklist continuation
+      const chkMatch = currentLine.match(/^([-*] \[[ x]\] )(.*)/);
+      if (chkMatch) {
+        if (!chkMatch[2].trim()) { // empty item → exit list
+          event.preventDefault();
+          const del = chkMatch[0].length;
+          ta.value = ta.value.slice(0, selectionStart - del) + '\n' + ta.value.slice(selectionStart);
+          ta.selectionStart = ta.selectionEnd = selectionStart - del + 1;
+        } else {
+          event.preventDefault();
+          const ins = '\n- [ ] ';
+          ta.value = before + ins + ta.value.slice(selectionStart);
+          ta.selectionStart = ta.selectionEnd = selectionStart + ins.length;
+        }
+        return;
+      }
+      // Bullet list continuation
+      const ulMatch = currentLine.match(/^([-*] )(.*)/);
+      if (ulMatch) {
+        if (!ulMatch[2].trim()) { // empty item → exit
+          event.preventDefault();
+          const del = ulMatch[0].length;
+          ta.value = ta.value.slice(0, selectionStart - del) + '\n' + ta.value.slice(selectionStart);
+          ta.selectionStart = ta.selectionEnd = selectionStart - del + 1;
+        } else {
+          event.preventDefault();
+          const ins = '\n- ';
+          ta.value = before + ins + ta.value.slice(selectionStart);
+          ta.selectionStart = ta.selectionEnd = selectionStart + ins.length;
+        }
+        return;
+      }
+      // Ordered list continuation
+      const olMatch = currentLine.match(/^(\d+)\. (.*)/);
+      if (olMatch) {
+        if (!olMatch[2].trim()) { // empty → exit
+          event.preventDefault();
+          const del = olMatch[0].length;
+          ta.value = ta.value.slice(0, selectionStart - del) + '\n' + ta.value.slice(selectionStart);
+          ta.selectionStart = ta.selectionEnd = selectionStart - del + 1;
+        } else {
+          event.preventDefault();
+          const next = parseInt(olMatch[1], 10) + 1;
+          const ins = `\n${next}. `;
+          ta.value = before + ins + ta.value.slice(selectionStart);
+          ta.selectionStart = ta.selectionEnd = selectionStart + ins.length;
+        }
+      }
+    }
+  },
+
+  /** Insert inline markdown wrapper around current selection (or at cursor) */
+  descInsert(before, after) {
+    const ta = document.getElementById('panel-description');
+    if (!ta) return;
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    const selected = ta.value.slice(start, end);
+    const replacement = before + (selected || 'text') + after;
+    ta.value = ta.value.slice(0, start) + replacement + ta.value.slice(end);
+    // Select the inner text so users can type over the placeholder
+    const innerStart = start + before.length;
+    const innerEnd   = innerStart + (selected || 'text').length;
+    ta.setSelectionRange(innerStart, innerEnd);
+    ta.focus();
+  },
+
+  /** Insert a line prefix (for lists/checklists) at the start of the current line */
+  descInsertLine(prefix) {
+    const ta = document.getElementById('panel-description');
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const before = ta.value.slice(0, start);
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const needsNewline = lineStart < before.length; // non-empty line → start fresh
+    const ins = (needsNewline ? '\n' : '') + prefix;
+    ta.value = ta.value.slice(0, start) + ins + ta.value.slice(start);
+    ta.selectionStart = ta.selectionEnd = start + ins.length;
+    ta.focus();
+  },
+
+  /**
+   * Toggle a checklist checkbox at the given line index.
+   * Called by onclick inside the rendered preview.
+   */
+  toggleDescCheck(lineIndex) {
+    const task = this.tasks.find(t => t.id === this.currentTaskId);
+    if (!task || !task.description) return;
+    const lines = task.description.split('\n');
+    const line = lines[lineIndex];
+    if (!line) return;
+    // Toggle [ ] ↔ [x]
+    if (/^[-*] \[ \] /.test(line)) {
+      lines[lineIndex] = line.replace(/^([-*] )\[ \] /, '$1[x] ');
+    } else if (/^[-*] \[x\] /i.test(line)) {
+      lines[lineIndex] = line.replace(/^([-*] )\[x\] /i, '$1[ ] ');
+    } else return;
+    task.description = lines.join('\n');
+    // Sync textarea value if editor happens to be open
+    const ta = document.getElementById('panel-description');
+    if (ta) ta.value = task.description;
+    this.renderDescriptionPreview(task);
+    this.save();
   },
 
   // ===== DEPENDENCIES INFO =====
