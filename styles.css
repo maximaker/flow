@@ -55,7 +55,7 @@
   --bg-sidebar-active: #302a22;
   --text: #d6d0c8;
   --text-secondary: #908678;
-  --text-light: #5e564a;
+  --text-light: #6e6458;
   --text-sidebar: #908678;
   --text-sidebar-active: #d6d0c8;
   --border: #2e2a24;
@@ -2653,6 +2653,25 @@ input:focus, select:focus, textarea:focus { outline: none; }
      touch-scroll on children (overflow: hidden would kill it on iOS) */
   #app { height: 100dvh; overflow-x: clip; }
 
+  /* === Mobile header (replaces desktop topbar) === */
+  .mobile-header {
+    display: flex !important; align-items: center; gap: 8px;
+    padding: 8px 12px; height: 48px;
+    background: var(--bg-white); border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .mobile-header .page-title { font-size: 16px; flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mobile-header-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .mobile-search { position: relative; }
+  .mobile-search input { width: 0; padding: 0; border: none; background: transparent;
+    transition: width 0.2s, padding 0.2s; font-size: 14px; }
+  .mobile-search input:focus { width: 140px; padding: 6px 8px; background: var(--bg-secondary);
+    border-radius: 6px; }
+  .mobile-notif .notification-badge { font-size: 9px; }
+  /* Desktop topbar hidden on mobile */
+  #desktop-topbar { display: none !important; }
+
   /* === Sidebar becomes a mobile drawer === */
   .sidebar {
     position: fixed !important;
@@ -2686,7 +2705,8 @@ input:focus, select:focus, textarea:focus { outline: none; }
     padding-bottom: calc(var(--bottom-nav-height) + 24px);
     -webkit-overflow-scrolling: touch;
     overflow-y: auto;
-    min-height: 0;     /* same flex shrink fix */
+    overflow-x: hidden;          /* prevent page-level horizontal scroll */
+    min-height: 0;               /* flex shrink fix */
   }
 
   /* === Topbar === */
@@ -2771,21 +2791,31 @@ input:focus, select:focus, textarea:focus { outline: none; }
   }
   .bottom-nav-fab:active > svg { transform: scale(0.93); }
 
-  /* === Task panel → full-screen bottom sheet === */
+  /* === Task panel → full-screen overlay === */
   .slide-panel {
     width: 100% !important;
-    top: auto; bottom: 0;
-    height: 94dvh; height: 94vh;
+    max-width: 100% !important;
+    top: 0; bottom: 0; left: 0; right: 0;
+    height: 100dvh; height: 100vh;
     border-left: none;
-    border-top-left-radius: 16px;
-    border-top-right-radius: 16px;
+    border-radius: 0;
     transform: translateY(100%);
     transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    z-index: 150;               /* above bottom-nav (120) */
   }
   .slide-panel.open { transform: translateY(0); }
 
-  /* Panel body scrollable */
-  .panel-body { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* Task overlay behind panel — also needs higher z-index on mobile */
+  .overlay.show { z-index: 140; }
+
+  /* Panel body scrollable — flex:1 + min-height:0 ensures it fills remaining space */
+  .panel-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    min-height: 0;
+    overscroll-behavior: contain;
+  }
 
   /* Drag handle indicator at the top of the panel */
   .panel-header::before {
@@ -2794,7 +2824,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
     width: 36px; height: 4px; border-radius: 2px;
     background: var(--border);
   }
-  .panel-header { position: relative; padding-top: 20px; }
+  .panel-header { position: relative; padding-top: 20px; flex-shrink: 0; }
 
   /* === Modals → full-screen bottom sheets === */
   .modal-content {
@@ -2814,14 +2844,21 @@ input:focus, select:focus, textarea:focus { outline: none; }
 
   /* === Kanban board → horizontal scroll, compact cards === */
   .kanban-board {
-    display: flex;
-    overflow-x: auto !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: scroll !important;     /* 'scroll' guarantees scrollbar, works better on iOS */
+    overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch;
     height: auto;
     min-height: calc(100dvh - 200px);
     padding-bottom: 8px;
-    scroll-snap-type: x proximity;     /* proximity is friendlier than mandatory */
+    scroll-snap-type: x proximity;
     gap: 12px;
+    /* Pull to edges so scroll region spans full viewport width */
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
   }
   .kanban-column {
     min-width: 80vw;
@@ -2846,17 +2883,61 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .my-tasks-header-left { flex-wrap: wrap; gap: 6px; }
   .my-tasks-header-left .btn-primary,
   .my-tasks-header-left .btn-secondary { font-size: 12px; padding: 7px 12px; }
-  .my-tasks-header-left .btn-kbd { display: none; } /* hide keyboard shortcut badges */
+  .btn-kbd { display: none; } /* hide keyboard shortcut badges on mobile */
   .filter-group { gap: 6px; }
   .filter-main { flex-wrap: wrap; gap: 6px; }
   .filter-select { font-size: 13px; padding: 6px 8px; flex: 1 1 auto; min-width: 0; }
   .filter-more-btn { font-size: 12px; }
   .filter-extra { flex-wrap: wrap; gap: 6px; }
 
-  /* Task list rows — comfortable touch targets */
+  /* === Task list rows — mobile card layout === */
   .task-list-view { gap: 0; }
-  .task-list-item { padding: 12px; min-height: 52px; gap: 10px; }
-  .task-list-title { font-size: 14px; }
+  .task-list-item { min-height: auto; }
+
+  /* Task row: stack title and right-side badges vertically */
+  .task-list-row {
+    flex-wrap: wrap; gap: 6px; padding: 10px 12px;
+    min-height: 48px; align-items: flex-start;
+  }
+  /* Smaller indentation per nesting level — handled in JS via padding-left.
+     Override the inline style to compress indentation on mobile. */
+  .task-list-item[data-level="1"] .task-list-row { padding-left: 24px !important; }
+  .task-list-item[data-level="2"] .task-list-row { padding-left: 36px !important; }
+  .task-list-item[data-level="3"] .task-list-row { padding-left: 44px !important; }
+  .task-list-item[data-level="4"] .task-list-row { padding-left: 50px !important; }
+
+  /* Title: NEVER truncate on mobile */
+  .task-list-name {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    word-break: break-word;
+    line-height: 1.4;
+  }
+
+  /* Right-side badges sit below title row */
+  .task-list-right {
+    width: 100%; padding-left: 44px; gap: 6px;
+    flex-wrap: wrap; margin-top: -2px;
+  }
+  .task-list-right:empty { display: none; }
+
+  /* Meta row (priority, project, due, labels) always visible on mobile */
+  .task-list-meta {
+    padding-left: 44px !important;
+    opacity: 1 !important; visibility: visible !important;
+    flex-wrap: wrap; gap: 4px;
+  }
+  .task-list-meta .priority-badge,
+  .task-list-meta .task-list-project,
+  .task-list-meta .task-list-due,
+  .task-list-meta .blocked-indicator,
+  .task-list-meta .label-tag {
+    visibility: visible !important; opacity: 1 !important;
+  }
+
+  /* Action buttons (Start, Snooze) — always visible on mobile */
+  .task-start-btn, .task-snooze-group { display: inline-flex !important; opacity: 0.9; }
 
   /* Inline add row at bottom */
   .inline-add-row { margin-top: 8px; padding: 10px 12px; }
@@ -2954,4 +3035,14 @@ input:focus, select:focus, textarea:focus { outline: none; }
    DARK MODE — bottom nav and drawer adjustments
    ============================================================ */
 [data-theme="dark"] .bottom-nav { background: var(--bg-sidebar); border-top-color: var(--border); }
-[data-theme="dark"] .sidebar-backdrop { background: rgba(0,0,0,0.55); }
+[data-theme="dark"] .bottom-nav-item.active { color: var(--accent); }
+[data-theme="dark"] .bottom-nav-item { color: var(--text-secondary); }
+[data-theme="dark"] .mobile-header { background: var(--bg-sidebar); border-bottom-color: var(--border); }
+[data-theme="dark"] .sidebar-backdrop { background: rgba(0,0,0,0.65); }
+[data-theme="dark"] .modal-overlay { background: rgba(0,0,0,0.4); }
+[data-theme="dark"] .overlay { background: rgba(0,0,0,0.35); }
+[data-theme="dark"] .conv-task-overlay { background: rgba(0,0,0,0.5); }
+[data-theme="dark"] .notification-dropdown { background: var(--bg-card); border-color: var(--border); }
+[data-theme="dark"] .filter-select { background: var(--bg-secondary); border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .task-card { border-color: var(--border); }
+[data-theme="dark"] .inline-add-row input { background: var(--bg-secondary); color: var(--text); }

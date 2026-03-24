@@ -106,8 +106,28 @@
 
     <!-- Main Content -->
     <main class="main-content">
-      <!-- Top Bar -->
-      <header class="topbar">
+      <!-- Mobile-only compact header (replaces full topbar on phones) -->
+      <header class="mobile-header" id="mobile-header">
+        <button class="btn-icon" id="mobile-sidebar-toggle" aria-label="Open menu" onclick="app.openSidebar()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="page-title" id="mobile-page-title">Home</h1>
+        <div class="mobile-header-right">
+          <div class="search-box mobile-search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search…" id="mobile-search-input">
+          </div>
+          <div class="notification-wrapper mobile-notif">
+            <button class="btn-icon notification-btn" id="mobile-notification-btn" aria-label="Notifications">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <span class="notification-badge" id="mobile-notification-badge">0</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Desktop/Tablet Top Bar (hidden on mobile) -->
+      <header class="topbar" id="desktop-topbar">
         <div class="topbar-left">
           <button class="btn-icon" id="sidebar-toggle" aria-label="Toggle sidebar">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -508,7 +528,7 @@
         </span>
         <span>My Tasks</span>
       </a>
-      <button class="bottom-nav-fab" onclick="app.showAddTask()" aria-label="Add task">
+      <button class="bottom-nav-fab" onclick="app.showTaskModal()" aria-label="Add task">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
       <a href="#" class="bottom-nav-item" data-view="board" aria-label="Board">

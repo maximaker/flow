@@ -491,6 +491,12 @@ export const useAppStore = defineStore('app', {
     document.getElementById(viewMap[view])?.classList.add('active');
     const titles = { home: 'Home', 'my-tasks': 'My Tasks', board: 'Board', timeline: 'Timeline', analytics: 'Analytics', workload: 'Workload', project: 'Project', settings: 'Settings' };
     document.getElementById('page-title').textContent = titles[view];
+    const mobileTitle = document.getElementById('mobile-page-title');
+    if (mobileTitle) mobileTitle.textContent = titles[view];
+    // Sync bottom nav active states
+    document.querySelectorAll('.bottom-nav-item[data-view]').forEach(el => {
+      el.classList.toggle('active', el.dataset.view === view);
+    });
     this.render();
   },
 
