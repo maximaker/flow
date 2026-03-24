@@ -165,10 +165,26 @@ export const useAppStore = defineStore('app', {
   // ===== EVENTS =====
   bindEvents() {
     document.querySelectorAll('.nav-item[data-view]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.switchView(el.dataset.view);
+        // Auto-close sidebar drawer on mobile after nav
+        if (window.innerWidth < 768) this.closeSidebar();
+      });
+    });
+    // Bottom nav items (mobile)
+    document.querySelectorAll('.bottom-nav-item[data-view]').forEach(el => {
       el.addEventListener('click', (e) => { e.preventDefault(); this.switchView(el.dataset.view); });
     });
     document.getElementById('sidebar-toggle').addEventListener('click', () => {
-      document.getElementById('sidebar').classList.toggle('collapsed');
+      const isMobile = window.innerWidth < 768;
+      const sidebar = document.getElementById('sidebar');
+      if (isMobile) {
+        const isOpen = sidebar.classList.contains('mobile-open');
+        isOpen ? this.closeSidebar() : this.openSidebar();
+      } else {
+        sidebar.classList.toggle('collapsed');
+      }
     });
     document.getElementById('theme-toggle').addEventListener('click', () => this.toggleTheme());
 
@@ -330,6 +346,18 @@ export const useAppStore = defineStore('app', {
     document.getElementById('cmd-overlay').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) this.closeCommandPalette();
     });
+  },
+
+  openSidebar() {
+    document.getElementById('sidebar')?.classList.add('mobile-open');
+    document.getElementById('sidebar-backdrop')?.classList.add('show');
+    document.body.classList.add('sidebar-open');
+  },
+
+  closeSidebar() {
+    document.getElementById('sidebar')?.classList.remove('mobile-open');
+    document.getElementById('sidebar-backdrop')?.classList.remove('show');
+    document.body.classList.remove('sidebar-open');
   },
 
   toggleFocusMode() {

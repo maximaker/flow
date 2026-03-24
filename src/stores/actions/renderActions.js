@@ -1259,18 +1259,20 @@ export const renderActions = {
 
   // ===== NAV BADGES =====
   renderNavBadges() {
+    const openCount = this.tasks.filter(t => t.status !== 'done' && this.isRootTask(t)).length;
+    const inProgCount = this.tasks.filter(t => t.status === 'in-progress' && this.isRootTask(t)).length;
+    // Sidebar badges
     const taskBadge = document.getElementById('nav-badge-tasks');
     const boardBadge = document.getElementById('nav-badge-board');
-    if (taskBadge) {
-      const count = this.tasks.filter(t => t.status !== 'done' && this.isRootTask(t)).length;
-      taskBadge.textContent = count;
-      taskBadge.classList.toggle('visible', count > 0);
-    }
-    if (boardBadge) {
-      const count = this.tasks.filter(t => t.status === 'in-progress' && this.isRootTask(t)).length;
-      boardBadge.textContent = count;
-      boardBadge.classList.toggle('visible', count > 0);
-    }
+    if (taskBadge) { taskBadge.textContent = openCount; taskBadge.classList.toggle('visible', openCount > 0); }
+    if (boardBadge) { boardBadge.textContent = inProgCount; boardBadge.classList.toggle('visible', inProgCount > 0); }
+    // Bottom nav badge (mobile)
+    const btmBadge = document.getElementById('bottom-badge-tasks');
+    if (btmBadge) { btmBadge.textContent = openCount; btmBadge.classList.toggle('visible', openCount > 0); }
+    // Also sync bottom-nav active item with current view
+    document.querySelectorAll('.bottom-nav-item[data-view]').forEach(el => {
+      el.classList.toggle('active', el.dataset.view === this.currentView);
+    });
   },
 
   // ===== BREADCRUMB =====

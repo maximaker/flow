@@ -2591,3 +2591,311 @@ input:focus, select:focus, textarea:focus { outline: none; }
 }
 /* Don't show border on the very first item in a section */
 .task-status-section .task-list-item:first-child { border-top: none; }
+
+/* ============================================================
+   RESPONSIVE — MOBILE FIRST
+   Breakpoints:
+     Mobile  : ≤ 767px
+     Tablet  : 768px – 1023px
+     Desktop : ≥ 1024px  (existing styles apply)
+   ============================================================ */
+
+/* ── Sidebar backdrop (mobile drawer) ── */
+.sidebar-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 29;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.sidebar-backdrop.show { opacity: 1; pointer-events: auto; }
+
+/* ── Bottom navigation bar ── */
+.bottom-nav {
+  display: none; /* hidden on desktop — shown via media query */
+}
+
+/* ============================================================
+   TABLET  768 – 1023px
+   ============================================================ */
+@media (max-width: 1023px) {
+  :root { --topbar-height: 52px; }
+
+  /* Task panel narrower on tablet */
+  .slide-panel { width: 55vw; }
+
+  /* Board columns scroll comfortable on tablet */
+  .kanban-board { height: calc(100vh - 140px); }
+
+  /* Topbar: hide keyboard shortcut hint and quick-add label */
+  .kbd-hint { display: none; }
+  .quick-add-box input { width: 140px; }
+}
+
+/* ============================================================
+   MOBILE  ≤ 767px
+   ============================================================ */
+@media (max-width: 767px) {
+  :root {
+    --topbar-height: 52px;
+    --bottom-nav-height: 60px;
+  }
+
+  /* === Root layout === */
+  #app { position: relative; overflow: hidden; }
+
+  /* === Sidebar becomes a mobile drawer === */
+  .sidebar {
+    position: fixed !important;
+    top: 0; left: 0; bottom: 0;
+    width: 280px !important;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+    z-index: 30;
+    /* Never collapse to 0 — we use transform instead */
+    overflow-y: auto;
+  }
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    box-shadow: 8px 0 32px rgba(0,0,0,0.18);
+  }
+  /* Hide the desktop collapsed state on mobile */
+  .sidebar.collapsed { width: 280px !important; transform: translateX(-100%); border-right: none; }
+
+  /* Show backdrop */
+  .sidebar-backdrop { display: block; }
+
+  /* === Main content: no left offset, add bottom padding === */
+  .main-content { margin-left: 0 !important; }
+  .content-area {
+    padding: 16px;
+    padding-bottom: calc(var(--bottom-nav-height) + 16px);
+  }
+
+  /* === Topbar === */
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar-left { gap: 8px; min-width: 0; flex: 1; }
+  .topbar-right { gap: 6px; flex-shrink: 0; }
+  .page-title { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+
+  /* Quick-add box: icon-only on mobile */
+  .quick-add-box { display: none; }
+
+  /* Search: collapse to icon, expand on focus */
+  .search-box { position: relative; }
+  .search-box svg { position: relative; z-index: 1; pointer-events: none; flex-shrink: 0; }
+  .search-box input {
+    width: 32px; padding: 6px 8px 6px 28px;
+    transition: width 0.2s ease;
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    background: var(--bg-secondary);
+  }
+  .search-box input:focus { width: 200px; position: fixed; top: 8px; right: 12px; transform: none; z-index: 100; }
+  .search-box:has(input:focus) svg { position: fixed; top: 14px; right: calc(200px - 16px); z-index: 101; }
+
+  /* Hide kbd hint */
+  .kbd-hint { display: none; }
+
+  /* Breadcrumb: shorter */
+  .breadcrumb { display: none; }
+
+  /* Sync indicator text → icon only */
+  .sync-status { font-size: 11px; padding: 3px 7px; }
+
+  /* === Bottom navigation bar === */
+  .bottom-nav {
+    display: flex;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: var(--bottom-nav-height);
+    background: var(--bg-white);
+    border-top: 1px solid var(--border);
+    z-index: 20;
+    align-items: stretch;
+    /* Safe area inset for notched phones */
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.07);
+  }
+  .bottom-nav-item {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 3px; font-size: 10px; font-weight: 500;
+    color: var(--text-light); text-decoration: none;
+    transition: color 0.15s;
+    padding: 6px 4px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bottom-nav-item.active { color: var(--accent); }
+  .bottom-nav-item svg { flex-shrink: 0; }
+  .bottom-nav-icon-wrap { position: relative; display: inline-flex; }
+  .bottom-nav-badge {
+    display: none; position: absolute; top: -4px; right: -6px;
+    background: var(--accent); color: #fff;
+    font-size: 9px; font-weight: 700; line-height: 1;
+    padding: 2px 4px; border-radius: 8px;
+  }
+  .bottom-nav-badge.visible { display: block; }
+
+  /* FAB — center button in bottom nav */
+  .bottom-nav-fab {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    background: none; border: none; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    padding: 0;
+  }
+  .bottom-nav-fab > svg {
+    width: 46px; height: 46px; padding: 12px;
+    background: var(--accent); color: #fff;
+    border-radius: 50%; margin-bottom: 4px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+    transition: transform 0.15s;
+    stroke: #fff;
+  }
+  .bottom-nav-fab:active > svg { transform: scale(0.93); }
+
+  /* === Task panel → full-screen bottom sheet === */
+  .slide-panel {
+    width: 100% !important;
+    top: auto; bottom: 0;
+    height: 94dvh; height: 94vh;
+    border-left: none;
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .slide-panel.open { transform: translateY(0); }
+
+  /* Panel body scrollable */
+  .panel-body { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Drag handle indicator at the top of the panel */
+  .panel-header::before {
+    content: ''; display: block; position: absolute;
+    top: 8px; left: 50%; transform: translateX(-50%);
+    width: 36px; height: 4px; border-radius: 2px;
+    background: var(--border);
+  }
+  .panel-header { position: relative; padding-top: 20px; }
+
+  /* === Modals → full-screen bottom sheets === */
+  .modal-content {
+    width: 100% !important; max-width: 100% !important;
+    margin: 0 !important;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    border-radius: 16px 16px 0 0 !important;
+    max-height: 90dvh; max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUpModal 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .modal-overlay { align-items: flex-end !important; }
+  @keyframes slideUpModal {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  /* === Kanban board → horizontal scroll, compact cards === */
+  .kanban-board {
+    height: auto;
+    min-height: calc(100dvh - 180px);
+    padding-bottom: 8px;
+    /* Snap to columns */
+    scroll-snap-type: x mandatory;
+  }
+  .kanban-column {
+    min-width: 82vw;
+    max-width: 86vw;
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+
+  /* === Task list rows — bigger tap targets === */
+  .task-list-item { min-height: 48px; padding: 10px 12px; }
+  .task-list-right { gap: 6px; }
+
+  /* Always show task action buttons on mobile (no hover needed) */
+  .task-start-btn, .task-snooze-group { display: flex !important; opacity: 0.85; }
+
+  /* === Home view — stack cards === */
+  .home-grid { grid-template-columns: 1fr !important; gap: 12px; }
+  .home-card { padding: 16px; }
+
+  /* === My Tasks view — tighter === */
+  .my-tasks-filters { flex-wrap: wrap; gap: 8px; }
+  .my-tasks-filters select, .my-tasks-filters button { font-size: 13px; }
+
+  /* === Settings → stack sidebar + content === */
+  .settings-layout { flex-direction: column; }
+  .settings-sidebar { width: 100% !important; border-right: none; border-bottom: 1px solid var(--border); }
+  .settings-sidebar-menu { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 12px; }
+  .settings-menu-item { padding: 6px 12px; border-radius: 20px; font-size: 12px; }
+
+  /* === Focus mode filter bar === */
+  .filter-main { flex-wrap: wrap; gap: 6px; }
+
+  /* === Context chips in task panel === */
+  .context-chips { flex-wrap: wrap; gap: 6px; }
+  .context-chip { font-size: 12px; }
+
+  /* === Notification dropdown → full width === */
+  .notification-dropdown {
+    position: fixed !important;
+    top: var(--topbar-height) !important; right: 0 !important; left: 0 !important;
+    width: 100% !important; max-height: 70vh;
+    border-radius: 0 0 12px 12px;
+    overflow-y: auto;
+  }
+
+  /* === Timeline view → allow horizontal scroll === */
+  .timeline-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* === Bulk bar → stack === */
+  .bulk-bar { flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
+  .bulk-bar .btn-secondary { font-size: 12px; padding: 5px 10px; }
+
+  /* === Focus mode button === */
+  .focus-mode-btn { font-size: 11px; padding: 5px 10px; }
+
+  /* === Command palette → full width === */
+  .cmd-palette-content { width: 94vw !important; margin: 0 auto; top: 60px !important; }
+
+  /* === No hover-only interactions on touch devices === */
+  @media (hover: none) {
+    .task-list-meta { opacity: 1 !important; visibility: visible !important; }
+    .card-meta { opacity: 1 !important; visibility: visible !important; }
+  }
+}
+
+/* ============================================================
+   SMALL MOBILE  ≤ 374px  (older iPhones / small Androids)
+   ============================================================ */
+@media (max-width: 374px) {
+  .topbar { padding: 0 10px; }
+  .page-title { max-width: 100px; font-size: 15px; }
+  .kanban-column { min-width: 88vw; }
+  .bottom-nav-item span { display: none; }
+  .bottom-nav-fab > svg { width: 40px; height: 40px; padding: 10px; }
+}
+
+/* ============================================================
+   UNIVERSAL TOUCH TARGETS
+   All interactive elements at minimum 44 × 44 px
+   ============================================================ */
+@media (max-width: 767px) {
+  .nav-item, .bottom-nav-item, .btn-icon, .btn-icon-sm,
+  .btn-primary, .btn-secondary, .btn-danger,
+  .task-list-item, .context-chip, .notif-tab,
+  .subtask-row, .label-chip, .project-item {
+    min-height: 44px;
+  }
+  .btn-icon, .btn-icon-sm { min-width: 44px; }
+  .desc-tb-btn { width: 36px; height: 36px; }
+  .panel-title-input { font-size: 16px; } /* prevent iOS zoom on input focus */
+  input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
+}
+
+/* ============================================================
+   DARK MODE — bottom nav and drawer adjustments
+   ============================================================ */
+[data-theme="dark"] .bottom-nav { background: var(--bg-sidebar); border-top-color: var(--border); }
+[data-theme="dark"] .sidebar-backdrop { background: rgba(0,0,0,0.55); }
