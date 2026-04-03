@@ -46,8 +46,12 @@ export const useAppStore = defineStore('app', {
   _pbSyncTimer: null,
   _pbSubs: [],       // unsubscribe functions from real-time subscriptions
   _syncing: false,   // true while _syncToPb() is writing, prevents echo-handling own writes
+  _storageWarnShown: false, // prevents repeated localStorage-full toasts
+  _savedTimer: null,        // debounce timer for panel "saved" indicator
+  _descSaveTimer: null,     // debounce timer for description auto-save
   _changePwUserId: null,
   _settingsSection: 'users',
+  _boundEventCleanups: [],  // cleanup functions for document-level event listeners
 
   // Sync health — surfaced in the topbar indicator
   // 'idle' | 'syncing' | 'error' | 'offline'
@@ -164,6 +168,12 @@ export const useAppStore = defineStore('app', {
 
   // ===== EVENTS =====
   bindEvents() {
+    // Helper to track document-level listeners for cleanup on logout
+    const trackListener = (target, event, handler, options) => {
+      target.addEventListener(event, handler, options);
+      this._boundEventCleanups.push(() => target.removeEventListener(event, handler, options));
+    };
+
     document.querySelectorAll('.nav-item[data-view]').forEach(el => {
       el.addEventListener('click', (e) => {
         e.preventDefault();
@@ -202,11 +212,11 @@ export const useAppStore = defineStore('app', {
         document.getElementById('notif-settings').classList.toggle('hidden', tab.dataset.tab !== 'settings');
       });
     });
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.notification-wrapper')) document.getElementById('notification-dropdown').classList.remove('show');
+    trackListener(document, 'click', (e) => {
+      if (!e.target.closest('.notification-wrapper')) document.getElementById('notification-dropdown')?.classList.remove('show');
     });
 
-    document.getElementById('task-overlay').addEventListener('click', () => this.closeTaskPanel());
+    document.getElementById('task-overlay')?.addEventListener('click', () => this.closeTaskPanel());
 
     // Color pickers
     document.querySelectorAll('.color-picker').forEach(picker => {
@@ -283,8 +293,8 @@ export const useAppStore = defineStore('app', {
     document.getElementById('sort-select')?.addEventListener('change', () => { this.sortPref = document.getElementById('sort-select').value; this.saveSortPref(); this.renderMyTasks(); });
 
     // Context menu close on click/escape
-    document.addEventListener('click', (e) => { if (!e.target.closest('.context-menu')) this.hideContextMenu(); });
-    document.addEventListener('contextmenu', (e) => {
+    trackListener(document, 'click', (e) => { if (!e.target.closest('.context-menu')) this.hideContextMenu(); });
+    trackListener(document, 'contextmenu', (e) => {
       const taskItem = e.target.closest('.task-list-item[data-task-id]');
       const taskCard = e.target.closest('.task-card[data-id]');
       const projectItem = e.target.closest('.project-item');
@@ -305,7 +315,7 @@ export const useAppStore = defineStore('app', {
     }
 
     // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
+    trackListener(document, 'keydown', (e) => {
       // Cmd/Ctrl+K = command palette
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); this.openCommandPalette(); return; }
       // Ctrl+Z = undo

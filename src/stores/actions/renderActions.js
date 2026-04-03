@@ -113,7 +113,8 @@ export const renderActions = {
 
     const total = this.tasks.length, done = this.tasks.filter(t => t.status === 'done').length;
     const inProg = this.tasks.filter(t => t.status === 'in-progress').length;
-    const overdue = this.tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done').length;
+    const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+    const overdue = this.tasks.filter(t => t.dueDate && new Date(t.dueDate + 'T00:00:00') < todayMidnight && t.status !== 'done').length;
     document.getElementById('home-stats').innerHTML = `
       <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Total Tasks</div></div>
       <div class="stat-card"><div class="stat-value">${inProg}</div><div class="stat-label">In Progress</div></div>
@@ -131,7 +132,7 @@ export const renderActions = {
     }).join('') : '<div class="empty-state-rich" style="padding:24px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14l2 2 4-4"/></svg><p>All caught up!</p><p class="empty-state-sub">No upcoming deadlines</p></div>';
 
     const recentComments = [];
-    this.tasks.forEach(t => (t.comments||[]).forEach(c => { const u = this.users.find(x => x.id === c.userId); recentComments.push({task:t,comment:c,user:u}); }));
+    this.tasks.forEach(t => (t.comments||[]).forEach(c => { if (!c || !c.userId) return; const u = this.users.find(x => x.id === c.userId); recentComments.push({task:t,comment:c,user:u}); }));
     recentComments.sort((a,b) => new Date(b.comment.timestamp) - new Date(a.comment.timestamp));
     document.getElementById('recent-activity').innerHTML = recentComments.length ? recentComments.slice(0,5).map(r => `
       <div class="activity-item"><div class="activity-dot"></div><div class="activity-text"><strong>${this.esc(r.user?.name||'Unknown')}</strong> commented on <strong>${this.esc(r.task.title)}</strong><span class="time">${this.timeAgo(r.comment.timestamp)}</span></div></div>
@@ -227,11 +228,16 @@ export const renderActions = {
     if (this.focusMode) {
       const today = new Date(); today.setHours(0,0,0,0);
       const todayStr = today.toISOString().split('T')[0];
-      const lastColId = this.boardColumns[this.boardColumns.length - 1]?.id;
+      // Detect "done" columns by name or position (last column as fallback)
+      const doneColIds = new Set(
+        this.boardColumns
+          .filter((c, i) => /done|complete|finished|closed/i.test(c.id + c.name) || i === this.boardColumns.length - 1)
+          .map(c => c.id)
+      );
       rootTasks = rootTasks.filter(t => {
-        if (t.status === lastColId) return false;
+        if (doneColIds.has(t.status)) return false;
         const ci = this.boardColumns.findIndex(c => c.id === t.status);
-        const isInProgress = ci > 0 && ci < this.boardColumns.length - 1;
+        const isInProgress = ci > 0 && !doneColIds.has(t.status);
         const isDueToday = t.dueDate && t.dueDate <= todayStr;
         return isInProgress || isDueToday;
       });

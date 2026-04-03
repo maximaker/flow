@@ -61,7 +61,7 @@ export const taskActions = {
       priority: document.getElementById('modal-task-priority').value,
       effort: document.getElementById('modal-task-effort').value,
       labelIds: this.getSelectedLabels('modal-task-labels'),
-      blockedBy: [], order: this.tasks.filter(t => t.status === (existingTask?.status || 'todo')).length,
+      blockedBy: [], order: existingTask ? existingTask.order : this.tasks.filter(t => t.status === 'todo').length,
       parentId: existingTask?.parentId || '',
       deliverables: [], attachments: [], comments: [], activityLog: [{ text: 'Task created', timestamp: new Date().toISOString() }],
       createdAt: new Date().toISOString().split('T')[0],
@@ -493,7 +493,10 @@ export const taskActions = {
   getTaskDepth(task) {
     let depth = 0;
     let current = task;
+    const seen = new Set();
     while (current && current.parentId) {
+      if (seen.has(current.id)) break; // circular reference guard
+      seen.add(current.id);
       depth++;
       current = this.tasks.find(t => t.id === current.parentId);
       if (depth > 5) break;
@@ -807,11 +810,14 @@ export const taskActions = {
         </div>
       </div>`;
     overlay.classList.add('open');
-    // Keyboard nav
+    // Remove previous handler before adding a new one (prevents stacking on nav)
+    if (this._lightboxKeyHandler) {
+      document.removeEventListener('keydown', this._lightboxKeyHandler);
+    }
     this._lightboxKeyHandler = (e) => {
       if (e.key === 'Escape') this.closeLightbox();
-      else if (e.key === 'ArrowLeft' && idx > 0) this.lightboxNav(-1);
-      else if (e.key === 'ArrowRight' && idx < images.length - 1) this.lightboxNav(1);
+      else if (e.key === 'ArrowLeft' && this._lightboxIdx > 0) this.lightboxNav(-1);
+      else if (e.key === 'ArrowRight' && this._lightboxIdx < this._lightboxImages.length - 1) this.lightboxNav(1);
     };
     document.addEventListener('keydown', this._lightboxKeyHandler);
   },

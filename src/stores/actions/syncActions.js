@@ -235,10 +235,8 @@ export const syncActions = {
       const isRateLimited = this._isRateLimited(e);
       this._setSyncStatus(isOffline ? 'offline' : 'error', e?.message);
       // Exponential backoff: double the delay up to 5 minutes on repeated failures
-      if (isRateLimited || !isOffline) {
-        this._pbSyncBackoff = Math.min((this._pbSyncBackoff || 800) * 2, 300_000);
-        this._schedulePbSync(this._pbSyncBackoff);
-      }
+      this._pbSyncBackoff = Math.min((this._pbSyncBackoff || 800) * 2, 300_000);
+      this._schedulePbSync(this._pbSyncBackoff);
     } finally {
       this._syncing = false;
     }
@@ -299,6 +297,13 @@ export const syncActions = {
       } catch (e) {
         console.warn(`Real-time subscription failed for ${col.name}:`, e);
       }
+    }
+    // If some subscriptions failed, retry once after 10s
+    if (this._pbSubs.length < collections.length && !this._realtimeRetried) {
+      this._realtimeRetried = true;
+      setTimeout(() => {
+        if (this.appStarted) this._subscribeToRealtime();
+      }, 10_000);
     }
   },
 

@@ -17,6 +17,7 @@ export const authActions = {
   showLoginScreen() { /* handled by Vue */ },
 
   async startApp() {
+    if (this.appStarted) return; // guard against double-init
     await this.loadData();
     if (!this.users.length) this.seedData();
     this.migrateOldSubtasks();
@@ -93,9 +94,17 @@ export const authActions = {
     this.expandedTasks = [];
     this._pbSnapshot = {};
     if (this._pbSyncTimer) { clearTimeout(this._pbSyncTimer); this._pbSyncTimer = null; }
+    if (this._savedTimer) { clearTimeout(this._savedTimer); this._savedTimer = null; }
+    if (this._descSaveTimer) { clearTimeout(this._descSaveTimer); this._descSaveTimer = null; }
     this._pbSubs.forEach(fn => { try { fn(); } catch {} });
     this._pbSubs = [];
+    // Clean up document-level event listeners registered in bindEvents()
+    if (this._boundEventCleanups) {
+      this._boundEventCleanups.forEach(fn => { try { fn(); } catch {} });
+      this._boundEventCleanups = [];
+    }
     this._syncing = false;
+    this._storageWarnShown = false;
     this.appStarted = false;
   },
 }
