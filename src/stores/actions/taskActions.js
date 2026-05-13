@@ -912,21 +912,53 @@ export const taskActions = {
   },
 
   // ===== TASK PAGE-ICON (Notion-style emoji slot) =====
-  // Click the icon to cycle through a small palette. Persists on the task.
-  cycleTaskIcon() {
+  // Open/close the icon picker popover above the task title.
+  toggleTaskIconPicker(ev) {
+    ev?.stopPropagation();
+    const picker = document.getElementById('panel-page-icon-picker');
+    if (!picker) return;
+    const isOpen = !picker.classList.contains('hidden');
+    if (isOpen) {
+      picker.classList.add('hidden');
+      this._iconPickerCleanup?.();
+      this._iconPickerCleanup = null;
+    } else {
+      picker.classList.remove('hidden');
+      // Close on outside click — bind once, capture so we beat inner stops.
+      const onDocClick = (e) => {
+        if (!picker.contains(e.target) && !document.getElementById('panel-page-icon').contains(e.target)) {
+          picker.classList.add('hidden');
+          this._iconPickerCleanup?.();
+          this._iconPickerCleanup = null;
+        }
+      };
+      setTimeout(() => document.addEventListener('click', onDocClick), 0);
+      this._iconPickerCleanup = () => document.removeEventListener('click', onDocClick);
+    }
+  },
+  setTaskIcon(emoji) {
     if (!this.currentTaskId) return;
     const task = this.tasks.find(t => t.id === this.currentTaskId);
     if (!task) return;
-    if (!this._taskIconPalette) {
-      // Lazy import — same palette used by defaultTaskEmoji.
-      this._taskIconPalette = ['📝','📌','✅','💡','🎯','🚧','🔧','🛠️','🧪','🔍','📊','📐','✏️','🖋️','🗒️','📎','🧭','🚀','⚡','🌟','🔥','🎨','🧱','📦','🎒','🪄','📞','💬','🔔','📅'];
-    }
-    const p = this._taskIconPalette;
-    const current = task.icon || this.defaultTaskEmoji(task);
-    const idx = p.indexOf(current);
-    task.icon = p[(idx + 1) % p.length];
+    task.icon = emoji;
     const el = document.getElementById('panel-page-icon');
-    if (el) el.textContent = task.icon;
+    if (el) el.textContent = emoji;
+    document.getElementById('panel-page-icon-picker')?.classList.add('hidden');
+    this._iconPickerCleanup?.();
+    this._iconPickerCleanup = null;
+    this.save();
+  },
+  removeTaskIcon() {
+    if (!this.currentTaskId) return;
+    const task = this.tasks.find(t => t.id === this.currentTaskId);
+    if (!task) return;
+    task.icon = '';
+    // Show the deterministic default again
+    const el = document.getElementById('panel-page-icon');
+    if (el) el.textContent = this.defaultTaskEmoji(task);
+    document.getElementById('panel-page-icon-picker')?.classList.add('hidden');
+    this._iconPickerCleanup?.();
+    this._iconPickerCleanup = null;
     this.save();
   },
 
@@ -1274,15 +1306,4 @@ export const taskActions = {
     if (/\b(by |due )?(today)\b/i.test(title)) { dueDate = today.toISOString().split('T')[0]; title = title.replace(/\b(by |due )?(today)\b/i, ''); }
     else if (/\b(by |due )?(tomorrow)\b/i.test(title)) { const d = new Date(today); d.setDate(d.getDate()+1); dueDate = d.toISOString().split('T')[0]; title = title.replace(/\b(by |due )?(tomorrow)\b/i, ''); }
     else if (/\b(by |due )?(next week)\b/i.test(title)) { const d = new Date(today); d.setDate(d.getDate()+7); dueDate = d.toISOString().split('T')[0]; title = title.replace(/\b(by |due )?(next week)\b/i, ''); }
-    else { const dueMatch = title.match(/due\s+(today|tomorrow|\d{4}-\d{2}-\d{2})/i); if (dueMatch) { const val = dueMatch[1].toLowerCase(); const now = new Date(); if (val === 'today') dueDate = now.toISOString().split('T')[0]; else if (val === 'tomorrow') { now.setDate(now.getDate()+1); dueDate = now.toISOString().split('T')[0]; } else dueDate = val; title = title.replace(/due\s+\S+/i, ''); } }
-
-    // Parse labels
-    this.labels.forEach(l => { const re = new RegExp('\\b' + l.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i'); if (re.test(title)) { labelIds.push(l.id); title = title.replace(re, '').trim(); } });
-
-    title = title.replace(/\s+/g, ' ').trim();
-    if (!title) { this.toast('Please enter a task title'); return; }
-
-    if (!projectId && this.currentView === 'project' && this.selectedProjectId) projectId = this.selectedProjectId;
-    if (!projectId && this.projects.length === 1) projectId = this.projects[0].id;
-
-    this.tasks.push({ id: this.generateId(), title, description: '', status: 'todo', projectId, assigneeId, dueDate, priority, labelIds, blockedBy: [], order: this.tasks.filter(t => t.status === 'todo').length, parentId: '', deliverables: [], a
+    else { const dueMatch = title.match(/due\s+(today|tomorrow|\d{4}-\d{2}-\d{2})/i); if (dueMatch) { const val = du

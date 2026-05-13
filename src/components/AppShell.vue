@@ -625,14 +625,32 @@
 
           <!-- Page icon (Notion-style) — clickable emoji slot above title.
                Populated by openTask() with a deterministic default until the
-               user picks one. Click cycles through a small palette. -->
-          <button
-            type="button"
-            class="panel-page-icon"
-            id="panel-page-icon"
-            aria-label="Task icon (click to change)"
-            @click="store.cycleTaskIcon()"
-          >📝</button>
+               user picks one. Click opens a palette picker. -->
+          <div class="panel-page-icon-wrap">
+            <button
+              type="button"
+              class="panel-page-icon"
+              id="panel-page-icon"
+              aria-label="Task icon (click to change)"
+              aria-haspopup="true"
+              @click="store.toggleTaskIconPicker($event)"
+            >📝</button>
+            <div class="panel-page-icon-picker hidden" id="panel-page-icon-picker" role="menu" aria-label="Choose task icon">
+              <div class="icon-picker-grid">
+                <button
+                  v-for="emoji in TASK_EMOJI_PALETTE"
+                  :key="emoji"
+                  type="button"
+                  class="icon-picker-cell"
+                  :aria-label="`Use ${emoji}`"
+                  @click="store.setTaskIcon(emoji)"
+                >{{ emoji }}</button>
+              </div>
+              <div class="icon-picker-footer">
+                <button type="button" class="btn-ghost" @click="store.removeTaskIcon()">Remove icon</button>
+              </div>
+            </div>
+          </div>
 
           <!-- Title -->
           <input type="text" class="panel-title-input" id="panel-title" placeholder="Task name">
@@ -662,6 +680,29 @@
             </div>
             <!-- Hidden dropdown for chips -->
             <div class="chip-dropdown hidden" id="chip-dropdown"></div>
+
+            <!-- Extended property rows promoted out of "More details" so the
+                 full task property list reads inline (Notion's pattern). -->
+            <div class="meta-row">
+              <label>Effort</label>
+              <select id="panel-effort-visible" class="meta-select" onchange="app.syncMoreField('effort')">
+                <option value="">None</option>
+                <option value="trivial">&lt; 1h</option>
+                <option value="small">1-2h</option>
+                <option value="medium">Half day</option>
+                <option value="large">1-2 days</option>
+                <option value="xl">3-5 days</option>
+                <option value="epic">1+ week</option>
+              </select>
+            </div>
+            <div class="meta-row">
+              <label>Labels</label>
+              <div class="label-picker" id="panel-labels-visible"></div>
+            </div>
+            <div class="meta-row">
+              <label>Blocked by</label>
+              <select id="panel-blocked-visible" class="meta-select" multiple onchange="app.syncMoreField('blocked')"></select>
+            </div>
           </div>
 
           <!-- Hidden selects for data binding -->
@@ -754,39 +795,32 @@
             <div id="activity-log" class="activity-log hidden"></div>
           </div>
 
-          <!-- More Details (collapsible) -->
-          <div class="panel-section panel-more-section">
-            <button class="panel-more-toggle" onclick="this.closest('.panel-more-section').classList.toggle('expanded')">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-              More details
-            </button>
-            <div class="panel-more-content">
-              <div class="meta-row"><label>Effort</label><select id="panel-effort-visible" class="meta-select" onchange="app.syncMoreField('effort')">
-                <option value="">None</option><option value="trivial">&lt; 1h</option><option value="small">1-2h</option>
-                <option value="medium">Half day</option><option value="large">1-2 days</option>
-                <option value="xl">3-5 days</option><option value="epic">1+ week</option>
-              </select></div>
-              <div class="meta-row"><label>Labels</label><div class="label-picker" id="panel-labels-visible"></div></div>
-              <div class="meta-row"><label>Blocked by</label><select id="panel-blocked-visible" class="meta-select" multiple onchange="app.syncMoreField('blocked')"></select></div>
-              <div class="panel-section hidden" id="panel-deps-section">
-                <h4>Dependencies</h4><div id="panel-deps-info" class="deps-info"></div>
-              </div>
-              <div class="panel-section">
-                <div class="section-header"><h4>Deliverables</h4><button class="btn-text" @click="store.addDeliverable()">+ Add</button></div>
-                <div id="deliverable-list" class="deliverable-list"></div>
-              </div>
-              <div class="panel-section">
-                <div class="section-header">
-                  <h4>Attachments</h4>
-                  <button class="btn-text" onclick="document.getElementById('file-input').click()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                    Add file
-                  </button>
-                  <input type="file" id="file-input" hidden multiple onchange="app.handleFileUpload(event)">
-                </div>
-                <div id="attachment-list" class="attachment-list"></div>
-              </div>
+          <!-- Dependencies (only renders when the task has blockers/blockees). -->
+          <div class="panel-section hidden" id="panel-deps-section">
+            <h4>Dependencies</h4>
+            <div id="panel-deps-info" class="deps-info"></div>
+          </div>
+
+          <!-- Deliverables -->
+          <div class="panel-section">
+            <div class="section-header">
+              <h4>Deliverables</h4>
+              <button class="btn-text" @click="store.addDeliverable()">+ Add</button>
             </div>
+            <div id="deliverable-list" class="deliverable-list"></div>
+          </div>
+
+          <!-- Attachments -->
+          <div class="panel-section">
+            <div class="section-header">
+              <h4>Attachments</h4>
+              <button class="btn-text" onclick="document.getElementById('file-input').click()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                Add file
+              </button>
+              <input type="file" id="file-input" hidden multiple onchange="app.handleFileUpload(event)">
+            </div>
+            <div id="attachment-list" class="attachment-list"></div>
           </div>
         </div>
       </div>
@@ -1263,17 +1297,4 @@
         <div class="shortcut-row"><kbd>Ctrl+K</kbd><span>Command palette</span></div>
         <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>Undo</span></div>
         <div class="shortcut-row"><kbd>Ctrl+N</kbd><span>New task</span></div>
-        <div class="shortcut-row"><kbd>B</kbd><span>Board view</span></div>
-        <div class="shortcut-row"><kbd>H</kbd><span>Home</span></div>
-        <div class="shortcut-row"><kbd>T</kbd><span>Timeline</span></div>
-        <div class="shortcut-row"><kbd>L</kbd><span>List view</span></div>
-        <div class="shortcut-row"><kbd>Esc</kbd><span>Close panel</span></div>
-      </div>
-    </button>
-
-    <!-- Conversational task creation -->
-    <div class="conv-task-overlay" id="conv-task-overlay">
-      <div class="conv-task-modal" id="conv-task-modal">
-        <div class="conv-task-header">
-          <div class="conv-task-header-left">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><pat
+        <div cl
