@@ -239,4 +239,56 @@ export function renderDescriptionMd(text) {
       openList('check');
       const done = chkM[1].toLowerCase() === 'x';
       html += `<li class="md-check-item">` +
-        `<button class="md-checkbox${done ? ' checked' : ''}" onclick="app.toggleDescChec
+        `<button class="md-checkbox${done ? ' checked' : ''}" onclick="app.toggleDescCheck(${i})" aria-label="${done ? 'Mark incomplete' : 'Mark complete'}"></button>` +
+        `<span class="md-check-label${done ? ' md-check-done' : ''}">${inlineMd(esc(chkM[2]))}</span>` +
+        `</li>`;
+      continue;
+    }
+
+    // Unordered list
+    const ulM = raw.match(/^[-*] (.*)/);
+    if (ulM) { openList('ul'); html += `<li>${inlineMd(esc(ulM[1]))}</li>`; continue; }
+
+    // Ordered list
+    const olM = raw.match(/^\d+\. (.*)/);
+    if (olM) { openList('ol'); html += `<li>${inlineMd(esc(olM[1]))}</li>`; continue; }
+
+    // Blockquote
+    if (raw.startsWith('> ')) {
+      closeList();
+      html += `<blockquote class="md-blockquote">${inlineMd(esc(raw.slice(2)))}</blockquote>`;
+      continue;
+    }
+
+    // Empty line → paragraph break spacer
+    if (raw.trim() === '') {
+      closeList();
+      html += '<div class="md-gap"></div>';
+      continue;
+    }
+
+    // Plain paragraph line
+    closeList();
+    html += `<p class="md-p">${inlineMd(escaped)}</p>`;
+  }
+
+  closeList();
+  return html;
+}
+
+/**
+ * Append an activity-log entry and cap the array at 50 entries (D-01).
+ * Mutates the task object in place.
+ */
+export function appendActivity(task, text) {
+  task.activityLog = task.activityLog || [];
+  task.activityLog.push({ text, timestamp: new Date().toISOString() });
+  if (task.activityLog.length > 50) task.activityLog = task.activityLog.slice(-50);
+}
+
+/** Set selected options on a <select multiple> by an array of values */
+export function setMultiSelect(elementId, values) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  Array.from(el.options).forEach(o => { o.selected = (values || []).includes(o.value); });
+}

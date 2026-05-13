@@ -469,4 +469,9 @@ export const syncActions = {
     ];
     this.notifications = [
       { id: this.generateId(), type: 'deadline', text: 'Deadline approaching: "User onboarding screens" is due tomorrow', taskId: t4, read: false, timestamp: new Date().toISOString() },
-      { id: this.generateId(), type: 'assign',   text: 'You were as
+      { id: this.generateId(), type: 'assign',   text: 'You were assigned to "Design homepage mockups"',               taskId: t1, read: false, timestamp: new Date(today - 3600000).toISOString() },
+      { id: this.generateId(), type: 'comment',  text: 'Marcus commented on "Design homepage mockups"',               taskId: t1, read: true,  timestamp: new Date(today - 86400000).toISOString() },
+    ];
+    this.save();
+  },
+}

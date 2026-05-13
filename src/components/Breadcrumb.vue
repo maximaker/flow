@@ -59,4 +59,21 @@ const taskCrumb = computed(() => {
 // header reads like a Notion page: emoji + name.
 const projectCrumb = computed(() => {
   if (store.currentView !== 'project') return null
-  const project = sto
+  const project = store.projects.find(p => p.id === store.selectedProjectId)
+  if (!project) return null
+  return {
+    viewKey: store.currentView,
+    viewTitle: VIEW_TITLES[store.currentView] ?? '',
+    projectName: project.name,
+    projectIcon: defaultProjectEmoji(project),
+  }
+})
+
+// Fallback for top-level views (Home / My Tasks / Board / Timeline / Analytics
+// / Workload / Settings). Notion always shows the current page name in the
+// topbar so the user has a persistent location anchor — this matches that.
+const viewCrumb = computed(() => {
+  if (taskCrumb.value || projectCrumb.value) return null
+  return VIEW_TITLES[store.currentView] || ''
+})
+</script>

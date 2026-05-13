@@ -24,4 +24,14 @@ const store = useAppStore()
 // hasn't been set yet — same behavior as the legacy renderSidebar code.
 const user = computed(() => {
   const cu = typeof store.getCurrentUser === 'function' ? store.getCurrentUser() : null
-  
+  return cu || store.users[0] || null
+})
+
+// Mirror of getRoleBadge: only admin/collaborator get a visible role chip.
+const roleLabel = computed(() => {
+  if (!user.value) return ''
+  if (user.value.role === 'admin') return 'Admin'
+  if (user.value.role === 'collaborator') return 'Collab'
+  return ''
+})
+</script>
