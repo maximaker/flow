@@ -4116,3 +4116,80 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .panel-title-input { font-size: 24px; }
   .icon-picker-grid { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* ============================================================
+ * My Tasks list — mobile readability overrides.
+ * The existing 767px rules truncate titles to a single line and
+ * shrink meta info to 9–10px to fit. That's unreadable on a phone.
+ * Wrap titles to 2 lines, bump meta back up to legible sizes.
+ * Targets ≤480px specifically so the desktop dense list stays intact.
+ * ============================================================ */
+@media (max-width: 480px) {
+  #view-my-tasks .task-list-name {
+    font-size: 15px !important;
+    line-height: 1.35 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    /* 2-line clamp keeps the row from runaway height on very long titles. */
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+  }
+  #view-my-tasks .task-list-name.completed {
+    font-size: 15px !important;
+    color: var(--text-light);
+  }
+  #view-my-tasks .task-list-row {
+    padding: 12px 12px !important;
+    min-height: 56px !important;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  /* Meta info: bump from 9–10px → 12px for readability. */
+  #view-my-tasks .task-list-meta {
+    font-size: 12px !important;
+    width: 100%;
+    margin-top: 4px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  #view-my-tasks .task-list-meta .priority-badge,
+  #view-my-tasks .task-list-meta .task-list-due,
+  #view-my-tasks .task-list-meta .task-list-project,
+  #view-my-tasks .task-list-meta .label-tag,
+  #view-my-tasks .task-list-meta .blocked-indicator {
+    font-size: 11px !important;
+    line-height: 1.5 !important;
+    padding: 2px 6px !important;
+  }
+  #view-my-tasks .task-list-meta .task-list-project {
+    max-width: 160px !important;
+  }
+  /* Task section headers (To Do / In Progress / Done) — readable size. */
+  #view-my-tasks .task-section-header {
+    font-size: 13px !important;
+    padding: 10px 12px 6px !important;
+    margin-top: 10px;
+    letter-spacing: 0.04em;
+  }
+  /* Right-side action column — hide all the dense action buttons but keep
+   * the avatar visible. Tap the row to open the panel for everything else. */
+  #view-my-tasks .task-list-right {
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  /* Tree indent: keep modest so titles have room. */
+  #view-my-tasks .task-list-item[data-level="0"] .task-list-row,
+  #view-my-tasks .task-list-item[data-level="1"] .task-list-row,
+  #view-my-tasks .task-list-item[data-level="2"] .task-list-row,
+  #view-my-tasks .task-list-item[data-level="3"] .task-list-row {
+    padding-left: 12px !important;
+  }
+  /* Selection checkbox + status dot — bigger touch targets. */
+  #view-my-tasks .task-select-check,
+  #view-my-tasks .task-check { width: 20px !important; height: 20px !important; }
+  #view-my-tasks .task-check svg { width: 12px !important; height: 12px !important; }
+}
