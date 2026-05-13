@@ -117,10 +117,13 @@ export const renderActions = {
       focusEl.classList.add('hidden');
     }
 
-    const total = this.tasks.length, done = this.tasks.filter(t => t.status === 'done').length;
-    const inProg = this.tasks.filter(t => t.status === 'in-progress').length;
+    // Welcome card stats exclude archived projects so the home dashboard
+    // reads as "what's active right now" — matches the Today/Week filter rule.
+    const liveTasks = this.tasks.filter(t => !t.projectId || !archivedProjectIds.has(t.projectId));
+    const total = liveTasks.length, done = liveTasks.filter(t => t.status === 'done').length;
+    const inProg = liveTasks.filter(t => t.status === 'in-progress').length;
     const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
-    const overdue = this.tasks.filter(t => t.dueDate && new Date(t.dueDate + 'T00:00:00') < todayMidnight && t.status !== 'done').length;
+    const overdue = liveTasks.filter(t => t.dueDate && new Date(t.dueDate + 'T00:00:00') < todayMidnight && t.status !== 'done').length;
     document.getElementById('home-stats').innerHTML = `
       <span class="home-stat"><span class="home-stat-num">${total}</span> total</span>
       <span class="home-stat"><span class="home-stat-num">${inProg}</span> in progress</span>
@@ -156,15 +159,19 @@ export const renderActions = {
 
   // ===== MY TASKS =====
   renderMyTasks() {
-    const search = document.getElementById('search-input').value.toLowerCase();
+    const search = (document.getElementById('search-input')?.value || document.getElementById('mobile-search-input')?.value || '').toLowerCase();
     const fProj = document.getElementById('filter-project').value;
     const fStatus = document.getElementById('filter-status').value;
     const fPriority = document.getElementById('filter-priority').value;
     const fLabel = document.getElementById('filter-label').value;
     const fAssignee = document.getElementById('filter-assignee').value;
+    // Hide tasks belonging to archived projects (treat archived projects as
+    // out-of-mind, same as on the Home dashboard).
+    const archivedProjectIds = new Set(this.projects.filter(p => p.archived).map(p => p.id));
 
     // Filter function for individual tasks
     const matchesFilter = (t) => {
+      if (t.projectId && archivedProjectIds.has(t.projectId)) return false;
       if (search && !t.title.toLowerCase().includes(search)) return false;
       if (fProj && t.projectId !== fProj) return false;
       if (fStatus && t.status !== fStatus) return false;
@@ -505,9 +512,11 @@ export const renderActions = {
 
   // ===== BOARD =====
   renderBoard() {
-    const search = document.getElementById('search-input').value.toLowerCase();
+    const search = (document.getElementById('search-input')?.value || document.getElementById('mobile-search-input')?.value || '').toLowerCase();
     const fProj = document.getElementById('board-project-select').value;
-    let filtered = this.tasks.filter(t => this.isRootTask(t));
+    // Hide tasks belonging to archived projects.
+    const archivedProjectIds = new Set(this.projects.filter(p => p.archived).map(p => p.id));
+    let filtered = this.tasks.filter(t => this.isRootTask(t) && (!t.projectId || !archivedProjectIds.has(t.projectId)));
     if (search) filtered = filtered.filter(t => t.title.toLowerCase().includes(search));
     if (fProj) filtered = filtered.filter(t => t.projectId === fProj);
 
@@ -639,7 +648,10 @@ export const renderActions = {
 
   renderTimeline() {
     const fProj = document.getElementById('timeline-project-select').value;
-    let tasks = this.tasks.filter(t => t.dueDate && this.isRootTask(t));
+    // Hide tasks belonging to archived projects (unless the user explicitly
+    // filters to one — keep their pick visible so they're not confused).
+    const archivedProjectIds = new Set(this.projects.filter(p => p.archived).map(p => p.id));
+    let tasks = this.tasks.filter(t => t.dueDate && this.isRootTask(t) && (!t.projectId || !archivedProjectIds.has(t.projectId) || t.projectId === fProj));
     if (fProj) tasks = tasks.filter(t => t.projectId === fProj);
 
     const today = new Date(); today.setHours(0,0,0,0);
