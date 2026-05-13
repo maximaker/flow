@@ -1,16 +1,20 @@
 /**
  * apply-pb-rules.js
- * Applies server-side PocketBase collection rules to enforce role-based access.
- * Run once from your local machine (needs network access to PocketBase).
+ * Applies server-side PocketBase collection rules AND ensures all schema
+ * fields required by the client exist (additive only — never drops fields).
+ *
+ * Run on every deploy that changes either the rules or the SCHEMA_ADDITIONS
+ * block below. Idempotent — re-running with no changes is a no-op.
  *
  * Usage:
- *   node scripts/apply-pb-rules.js <admin-email> <admin-password>
- *
- * Example:
- *   node scripts/apply-pb-rules.js admin@example.com myAdminPass
+ *   VITE_PB_URL=https://pb.example.com node scripts/apply-pb-rules.js <admin-email> <admin-password>
  */
 
-const PB_URL = process.env.VITE_PB_URL || 'https://pb.thedigitalvitamins.com';
+const PB_URL = process.env.VITE_PB_URL;
+if (!PB_URL) {
+  console.error('VITE_PB_URL env var is required (refusing to default to a hardcoded URL — risk of overwriting prod rules unintentionally).');
+  process.exit(1);
+}
 
 const [,, adminEmail, adminPassword] = process.argv;
 if (!adminEmail || !adminPassword) {
@@ -34,8 +38,10 @@ const RULES = {
   tasks: {
     listRule:   '@request.auth.id != ""',
     viewRule:   '@request.auth.id != ""',
-    // Any authenticated user can create tasks (collaborators may be assigned tasks)
-    createRule: '@request.auth.id != ""',
+    // Admins and users can create tasks for anyone. Collaborators can create
+    // tasks too but only with an empty assignee or themselves — preventing
+    // a collaborator from silently assigning work to other people.
+    createRule: '@request.auth.id != "" && (@request.auth.role = "admin" || @request.auth.role = "user" || assigneeId = "" || assigneeId = @request.auth.id)',
     // Admins/users can update any task; collaborators only their own assigned tasks
     updateRule: '@request.auth.role = "admin" || @request.auth.role = "user" || (@request.auth.role = "collaborator" && assigneeId = @request.auth.id)',
     // Only admins and users can delete tasks
@@ -56,11 +62,13 @@ const RULES = {
     deleteRule: '@request.auth.role = "admin" || @request.auth.role = "user"',
   },
   notifications: {
-    listRule:   '@request.auth.id != ""',
-    viewRule:   '@request.auth.id != ""',
-    createRule: '@request.auth.id != ""',
-    updateRule: '@request.auth.id != ""',
-    deleteRule: '@request.auth.id != ""',
+    // Owner-scoped: a user can only see / mutate their own notifications.
+    listRule:   '@request.auth.id != "" && userId = @request.auth.id',
+    viewRule:   '@request.auth.id != "" && userId = @request.auth.id',
+    // create: any authenticated user, but only with their own userId stamped on it.
+    createRule: '@request.auth.id != "" && userId = @request.auth.id',
+    updateRule: '@request.auth.id != "" && userId = @request.auth.id',
+    deleteRule: '@request.auth.id != "" && userId = @request.auth.id',
   },
   users: {
     listRule:   '@request.auth.id != ""',
@@ -72,6 +80,35 @@ const RULES = {
     // Only admins can delete users
     deleteRule: '@request.auth.role = "admin"',
   },
+};
+
+// ── Schema additions ───────────────────────────────────────────────────────
+//
+// Additive-only field migrations. The script reads the current collection
+// schema, finds any field listed here that's missing, and appends it. It
+// never modifies or removes existing fields — safe to re-run.
+//
+// PocketBase field types reference: text, number, bool, email, url, date,
+// select, json, file, relation, editor.
+// ────────────────────────────────────────────────────────────────────────────
+
+const SCHEMA_ADDITIONS = {
+  projects: [
+    {
+      name: 'icon',
+      type: 'text',
+      required: false,
+      options: { min: null, max: 8, pattern: '' },
+    },
+    {
+      name: 'managerId',
+      type: 'relation',
+      required: false,
+      // collectionId is resolved at runtime from the `users` collection name.
+      _relationCollection: 'users',
+      options: { maxSelect: 1, cascadeDelete: false, minSelect: null },
+    },
+  ],
 };
 
 async function main() {
@@ -97,7 +134,49 @@ async function main() {
   const { items: collections } = await colRes.json();
   const byName = Object.fromEntries(collections.map(c => [c.name, c]));
 
-  // 3. Apply rules to each collection
+  // 3. Apply schema additions (idempotent — only adds missing fields).
+  console.log('Schema additions:');
+  for (const [name, fields] of Object.entries(SCHEMA_ADDITIONS)) {
+    const col = byName[name];
+    if (!col) {
+      console.warn(`⚠  Collection "${name}" not found — skipping schema additions`);
+      continue;
+    }
+    const existing = new Set((col.schema || []).map(f => f.name));
+    const toAdd = fields.filter(f => !existing.has(f.name));
+    if (!toAdd.length) {
+      console.log(`✓ ${name}: schema already up to date`);
+      continue;
+    }
+    // Resolve _relationCollection names → collectionId on the wire format.
+    const resolved = toAdd.map(f => {
+      const out = { ...f };
+      if (f._relationCollection) {
+        const target = byName[f._relationCollection];
+        if (!target) throw new Error(`Relation target collection "${f._relationCollection}" not found for field ${name}.${f.name}`);
+        out.options = { ...(f.options || {}), collectionId: target.id };
+        delete out._relationCollection;
+      }
+      return out;
+    });
+    const newSchema = [...(col.schema || []), ...resolved];
+    const schemaRes = await fetch(`${PB_URL}/api/collections/${col.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: token },
+      body: JSON.stringify({ schema: newSchema }),
+    });
+    if (schemaRes.ok) {
+      console.log(`✓ ${name}: added ${toAdd.map(f => f.name).join(', ')}`);
+      // Update local cache so the rules pass below sees the new schema.
+      byName[name].schema = newSchema;
+    } else {
+      const err = await schemaRes.text();
+      console.error(`✗ ${name} schema: ${err}`);
+    }
+  }
+
+  // 4. Apply rules to each collection
+  console.log('\nCollection rules:');
   for (const [name, rules] of Object.entries(RULES)) {
     const col = byName[name];
     if (!col) {
@@ -117,7 +196,7 @@ async function main() {
     }
   }
 
-  console.log('\nDone. PocketBase collection rules are now enforced server-side.');
+  console.log('\nDone. PocketBase schema and collection rules are now in sync.');
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

@@ -183,7 +183,7 @@ export const convTaskActions = {
       this.projects.forEach(p => {
         const btn = document.createElement('button');
         btn.className = 'conv-chip conv-chip-project';
-        btn.innerHTML = `<span class="conv-chip-dot" style="background:${p.color}"></span>${this.esc(p.name)}`;
+        btn.innerHTML = `<span class="conv-chip-dot" style="background:${this.safeColor(p.color)}"></span>${this.esc(p.name)}`;
         btn.addEventListener('click', () => this._convSubmit(p.id));
         area.appendChild(btn);
       });

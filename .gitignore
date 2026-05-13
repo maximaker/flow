@@ -2,3 +2,21 @@ node_modules/
 dist/
 .DS_Store
 *.log
+
+# Per-developer machine state — Claude Code session/worktree metadata.
+.claude/
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# Environment files — values may be secrets, and even non-secret values
+# baked into the bundle should be set per-environment, not committed.
+.env
+.env.local
+.env.*.local
+
+# Playwright artifacts
+test-results/
+playwright-report/
+playwright/.cache/

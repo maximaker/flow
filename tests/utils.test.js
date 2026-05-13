@@ -8,6 +8,8 @@ import {
   generateId,
   esc,
   safeColor,
+  safeUrl,
+  safeId,
   initials,
   relativeDate,
   formatDate,
@@ -111,6 +113,66 @@ describe('safeColor', () => {
   it('uses custom fallback when provided', () => {
     expect(safeColor(null, '#aabbcc')).toBe('#aabbcc')
     expect(safeColor('invalid', '#333')).toBe('#333')
+  })
+})
+
+// ─── safeUrl ────────────────────────────────────────────────────────────────
+
+describe('safeUrl', () => {
+  it('passes through http(s) and mailto', () => {
+    expect(safeUrl('https://example.com')).toBe('https://example.com')
+    expect(safeUrl('http://x.io')).toBe('http://x.io')
+    expect(safeUrl('mailto:a@b.c')).toBe('mailto:a@b.c')
+  })
+
+  it('passes through relative paths and fragments', () => {
+    expect(safeUrl('/foo')).toBe('/foo')
+    expect(safeUrl('#section')).toBe('#section')
+    expect(safeUrl('?q=1')).toBe('?q=1')
+  })
+
+  it('blocks dangerous schemes', () => {
+    expect(safeUrl('javascript:alert(1)')).toBe('#')
+    expect(safeUrl('JavaScript:alert(1)')).toBe('#')
+    expect(safeUrl('data:text/html,<script>')).toBe('#')
+    expect(safeUrl('vbscript:msgbox')).toBe('#')
+    expect(safeUrl('file:///etc/passwd')).toBe('#')
+  })
+
+  it('blocks scheme smuggling via control chars', () => {
+    expect(safeUrl('java\nscript:alert(1)')).toBe('#')
+    expect(safeUrl('java\tscript:x')).toBe('#')
+  })
+
+  it('percent-encodes quotes so the value cannot escape href="..."', () => {
+    expect(safeUrl('https://x.com/foo"bar')).toBe('https://x.com/foo%22bar')
+    expect(safeUrl("https://x.com/foo'bar")).toBe('https://x.com/foo%27bar')
+  })
+
+  it('returns fallback for empty input', () => {
+    expect(safeUrl('')).toBe('#')
+    expect(safeUrl(null)).toBe('#')
+    expect(safeUrl(undefined)).toBe('#')
+  })
+})
+
+// ─── safeId ─────────────────────────────────────────────────────────────────
+
+describe('safeId', () => {
+  it('accepts a 15-char lowercase alphanumeric id', () => {
+    expect(safeId('abcdefghij12345')).toBe(true)
+    expect(safeId(generateId())).toBe(true)
+  })
+
+  it('rejects malformed ids (XSS smuggling guard)', () => {
+    expect(safeId("x','x'); alert(1);//")).toBe(false)
+    expect(safeId('abc')).toBe(false)
+    expect(safeId('ABCDEFGHIJ12345')).toBe(false)  // uppercase
+    expect(safeId('abcdefghij1234!')).toBe(false)  // special char
+    expect(safeId('')).toBe(false)
+    expect(safeId(null)).toBe(false)
+    expect(safeId(undefined)).toBe(false)
+    expect(safeId(123)).toBe(false)
   })
 })
 
@@ -323,6 +385,23 @@ describe('renderMarkdown', () => {
     const out = renderMarkdown('[click](https://example.com)')
     expect(out).toContain('href="https://example.com"')
     expect(out).toContain('md-link')
+  })
+
+  it('blocks javascript: URLs in markdown links (XSS guard)', () => {
+    const out = renderMarkdown('[click](javascript:alert(1))')
+    expect(out).not.toContain('javascript:')
+    expect(out).toContain('href="#"')
+  })
+
+  it('blocks data: URLs in markdown links', () => {
+    const out = renderMarkdown('[click](data:text/html,<script>alert(1)</script>)')
+    expect(out).not.toContain('data:')
+  })
+
+  it('preserves mailto: and relative URLs', () => {
+    expect(renderMarkdown('[a](mailto:x@y.com)')).toContain('href="mailto:x@y.com"')
+    expect(renderMarkdown('[a](/local/path)')).toContain('href="/local/path"')
+    expect(renderMarkdown('[a](#anchor)')).toContain('href="#anchor"')
   })
 
   it('renders @mentions', () => {

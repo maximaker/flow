@@ -42,8 +42,12 @@ export const useAppStore = defineStore('app', {
   notifPrefs: { deadlines: true, assignments: true, comments: true, email: false },
 
   // PocketBase sync state
-  _pbSnapshot: {},
+  // NOTE: `_pbSnapshot` is intentionally NOT in reactive state — it's a
+  // 5-string-field copy of all collections, rewritten on every realtime tick.
+  // Reactivity has no consumers and JSON.stringify of it on each write is hot.
+  // It lives as a module-level variable in syncActions.js instead.
   _pbSyncTimer: null,
+  _pbSyncBackoff: 800, // exponential backoff floor (ms) — doubles up to 5 min on repeated failures
   _pbSubs: [],       // unsubscribe functions from real-time subscriptions
   _syncing: false,   // true while _syncToPb() is writing, prevents echo-handling own writes
   _storageWarnShown: false, // prevents repeated localStorage-full toasts
@@ -87,6 +91,8 @@ export const useAppStore = defineStore('app', {
   generateId: utils.generateId,
   esc:        utils.esc,
   safeColor:  utils.safeColor,
+  safeUrl:    utils.safeUrl,
+  safeId:     utils.safeId,
   initials:   utils.initials,
   relativeDate:      utils.relativeDate,
   formatDate:        utils.formatDate,
@@ -145,6 +151,8 @@ export const useAppStore = defineStore('app', {
         ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
         : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
     }
+    const label = document.getElementById('theme-label');
+    if (label) label.textContent = this.theme === 'dark' ? 'Light mode' : 'Dark mode';
   },
 
   toggleTheme() {
@@ -259,10 +267,15 @@ export const useAppStore = defineStore('app', {
       if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
     });
 
-    // Quick add (topbar)
-    document.getElementById('quick-add-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { this.quickAdd(e.target.value); e.target.value = ''; }
-    });
+    // Quick add — the topbar input was removed in favor of a sidebar trigger
+    // + popup (Vue-bound). Keep this guarded so legacy bindEvents() callers
+    // don't crash if the element is missing.
+    const quickAddInput = document.getElementById('quick-add-input');
+    if (quickAddInput) {
+      quickAddInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { this.quickAdd(e.target.value); e.target.value = ''; }
+      });
+    }
 
     // Inline add-task row (My Tasks view)
     const inlineInput = document.getElementById('inline-add-input');
@@ -519,7 +532,10 @@ export const useAppStore = defineStore('app', {
     const viewMap = { home: 'view-home', 'my-tasks': 'view-my-tasks', board: 'view-board', timeline: 'view-timeline', analytics: 'view-analytics', workload: 'view-workload', project: 'view-project', settings: 'view-settings' };
     document.getElementById(viewMap[view])?.classList.add('active');
     const titles = { home: 'Home', 'my-tasks': 'My Tasks', board: 'Board', timeline: 'Timeline', analytics: 'Analytics', workload: 'Workload', project: 'Project', settings: 'Settings' };
-    document.getElementById('page-title').textContent = titles[view];
+    // Desktop topbar's #page-title was removed (breadcrumb + in-content h2
+    // carry the page label); mobile still has its own #mobile-page-title.
+    const pageTitleEl = document.getElementById('page-title');
+    if (pageTitleEl) pageTitleEl.textContent = titles[view];
     const mobileTitle = document.getElementById('mobile-page-title');
     if (mobileTitle) mobileTitle.textContent = titles[view];
     // Sync bottom nav active states
@@ -530,11 +546,18 @@ export const useAppStore = defineStore('app', {
   },
 
   render() {
+    // startApp() calls render() before AppShell.vue has mounted; the legacy
+    // imperative paths assume DOM elements exist and would throw. AppShell's
+    // onMounted hook calls render() again on nextTick, so this is a clean
+    // no-op rather than an error to swallow. Guard on #sidebar — it lives
+    // at the top of AppShell's template and survives even after individual
+    // child placeholders are migrated to Vue components.
+    if (!document.getElementById('sidebar')) return;
     try {
       this.renderSidebar();
       this.renderNotifications();
       this.renderNavBadges();
-      this.renderBreadcrumb();
+      // Breadcrumb is rendered by src/components/Breadcrumb.vue — no imperative render call needed.
     } catch (e) {
       console.error('[Flow] Shell render error:', e);
     }
@@ -579,7 +602,7 @@ export const useAppStore = defineStore('app', {
   },
 
   updateCommandResults() {
-    const q = (document.getElementById('cmd-input')?.value || '').toLowerCase();
+    const q = (document.getElementById('cmd-input')?.value || '').toLowerCase().trim();
     const actions = [
       { title: 'New Task',            desc: 'Create a new task',           action: () => { this.closeCommandPalette(); this.showTaskModal(); } },
       { title: 'Toggle Dark Mode',    desc: 'Switch between light and dark', action: () => { this.closeCommandPalette(); this.toggleTheme(); } },
@@ -590,16 +613,110 @@ export const useAppStore = defineStore('app', {
       { title: 'Manage Labels',       desc: 'Add or remove labels',        action: () => { this.closeCommandPalette(); this.showLabelModal(); } },
       { title: 'New Project',         desc: 'Create a new project',        action: () => { this.closeCommandPalette(); this.showProjectModal(); } },
     ];
-    const taskResults  = this.tasks.filter(t => !q || t.title.toLowerCase().includes(q)).slice(0,8).map(t => ({ title: t.title, desc: this.projects.find(p => p.id === t.projectId)?.name || '', type: 'task',    action: () => { this.closeCommandPalette(); this.openTask(t.id); } }));
-    const projResults  = this.projects.filter(p => !q || p.name.toLowerCase().includes(q)).map(p => ({ title: p.name, desc: 'Project', type: 'project', action: () => { this.closeCommandPalette(); this.selectProject(p.id); } }));
-    const userResults  = this.users.filter(u => !q || u.name.toLowerCase().includes(q)).map(u => ({ title: u.name, desc: u.role, type: 'user', action: () => this.closeCommandPalette() }));
-    const actionResults = actions.filter(a => !q || a.title.toLowerCase().includes(q) || a.desc.toLowerCase().includes(q)).map(a => ({ ...a, type: 'action' }));
-    const results = [...actionResults, ...taskResults, ...projResults, ...userResults].slice(0, 12);
-    this._cmdResults = results;
-    this.cmdSelectedIndex = Math.min(this.cmdSelectedIndex, Math.max(0, results.length - 1));
-    const icons = { task: '<div class="cmd-item-icon task">T</div>', project: '<div class="cmd-item-icon project">P</div>', action: '<div class="cmd-item-icon action">&#9889;</div>', user: '<div class="cmd-item-icon user">U</div>' };
+    const taskToResult = (t) => ({ title: t.title, desc: this.projects.find(p => p.id === t.projectId)?.name || '', type: 'task', action: () => { this.closeCommandPalette(); this.openTask(t.id); } });
+    const projToResult = (p) => ({ title: p.name, desc: 'Project', type: 'project', action: () => { this.closeCommandPalette(); this.selectProject(p.id); } });
+    const userToResult = (u) => ({ title: u.name, desc: u.role || '', type: 'user', action: () => this.closeCommandPalette() });
+
+    let sections;
+    if (!q) {
+      // Empty input → show Recent tasks (Notion-style QuickFind pattern).
+      // If no recent yet, fall back to the most recently created tasks.
+      const recents = (this.recentTasks || [])
+        .map(id => this.tasks.find(t => t.id === id))
+        .filter(Boolean)
+        .slice(0, 5);
+      const fallback = !recents.length
+        ? [...this.tasks].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 5)
+        : [];
+      const recentResults = [...recents, ...fallback].map(taskToResult);
+      sections = [{ label: 'Recent', items: recentResults }];
+    } else {
+      // Query → filter across tasks, projects, users, and actions. Tasks
+      // lead because that's the most common navigation target.
+      const tasksMatch = this.tasks
+        .filter(t => t.title.toLowerCase().includes(q))
+        .slice(0, 8)
+        .map(taskToResult);
+      const projsMatch = this.projects
+        .filter(p => p.name.toLowerCase().includes(q))
+        .map(projToResult);
+      const usersMatch = this.users
+        .filter(u => u.name.toLowerCase().includes(q))
+        .map(userToResult);
+      const actionsMatch = actions
+        .filter(a => a.title.toLowerCase().includes(q) || a.desc.toLowerCase().includes(q))
+        .map(a => ({ ...a, type: 'action' }));
+      sections = [
+        { label: 'Tasks', items: tasksMatch },
+        { label: 'Projects', items: projsMatch },
+        { label: 'People', items: usersMatch },
+        { label: 'Actions', items: actionsMatch },
+      ].filter(s => s.items.length > 0);
+    }
+
+    // Always-on "+ New task" action at the end of the list — mirrors the
+    // reference QuickFind's pinned "New page" affordance. When the user has
+    // typed a query, the new-task button uses it as the seed title.
+    const newTaskItem = {
+      title: q ? `New task "${q}"` : 'New task',
+      desc: 'Create a new task',
+      type: 'new',
+      pinned: true,
+      action: () => { this.closeCommandPalette(); this.showTaskModal(); },
+    };
+
+    const flat = [...sections.flatMap(s => s.items), newTaskItem];
+    this._cmdResults = flat;
+    this.cmdSelectedIndex = Math.min(this.cmdSelectedIndex, Math.max(0, flat.length - 1));
+
+    /** Bold-highlight the substring of `text` that matches `query`. Returns
+     *  pre-escaped HTML so the caller can drop it directly into innerHTML. */
+    const highlight = (text, query) => {
+      const safe = this.esc(text);
+      if (!query) return safe;
+      const lower = text.toLowerCase();
+      const idx = lower.indexOf(query);
+      if (idx === -1) return safe;
+      // We escaped the full text already; do the same slicing on the escaped
+      // version using the original index — works because esc() preserves
+      // character positions for typical text (no & < > " mid-match).
+      const lenEscapedSlice = this.esc(text.slice(idx, idx + query.length)).length;
+      const beforeLen = this.esc(text.slice(0, idx)).length;
+      return safe.slice(0, beforeLen)
+        + '<span class="cmd-match">' + safe.slice(beforeLen, beforeLen + lenEscapedSlice) + '</span>'
+        + safe.slice(beforeLen + lenEscapedSlice);
+    };
+
+    const icons = {
+      task:    '<div class="cmd-item-icon task"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>',
+      project: '<div class="cmd-item-icon project"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>',
+      action:  '<div class="cmd-item-icon action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>',
+      user:    '<div class="cmd-item-icon user"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>',
+      new:     '<div class="cmd-item-icon action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>',
+    };
+
     const el = document.getElementById('cmd-results');
-    if (el) el.innerHTML = results.length ? results.map((r, i) => `<div class="cmd-item ${i === this.cmdSelectedIndex ? 'active' : ''}" onmouseenter="app.cmdSelectedIndex=${i};app.highlightCmd()" onclick="app._cmdResults[${i}].action()">${icons[r.type]||icons.action}<div class="cmd-item-info"><div class="cmd-item-title">${this.esc(r.title)}</div>${r.desc ? `<div class="cmd-item-desc">${this.esc(r.desc)}</div>` : ''}</div></div>`).join('') : '<div class="empty-state" style="padding:30px"><p>No results</p></div>';
+    if (!el) return;
+    const renderRow = (r, i) =>
+      `<div class="cmd-item ${i === this.cmdSelectedIndex ? 'active' : ''} ${r.pinned ? 'cmd-item-pinned' : ''}" onmouseenter="app.cmdSelectedIndex=${i};app.highlightCmd()" onclick="app._cmdResults[${i}].action()">${icons[r.type]||icons.action}<div class="cmd-item-info"><div class="cmd-item-title">${highlight(r.title, q)}</div>${r.desc ? `<div class="cmd-item-desc">${this.esc(r.desc)}</div>` : ''}</div></div>`;
+
+    // Has the user typed anything but found no matching task/project/user?
+    // Show a tight "no matches" message above the pinned "New task" action.
+    const noMatches = q && sections.length === 0;
+    let absIdx = 0;
+    const sectionsHtml = sections.map(sec => {
+      const items = sec.items.map((r) => renderRow(r, absIdx++)).join('');
+      return `<div class="cmd-section-label">${sec.label}</div>${items}`;
+    }).join('');
+    const emptyHtml = noMatches
+      ? `<div class="cmd-empty">No matches for <strong>"${this.esc(q)}"</strong></div>`
+      : '';
+    // Always render the pinned "New task" row at the bottom, separated by a
+    // hairline divider from whatever's above.
+    const newTaskIndex = flat.length - 1;
+    const pinnedHtml = `<div class="cmd-divider"></div>${renderRow(newTaskItem, newTaskIndex)}`;
+
+    el.innerHTML = sectionsHtml + emptyHtml + pinnedHtml;
   },
 
   cmdNavigate(dir) {
@@ -617,22 +734,11 @@ export const useAppStore = defineStore('app', {
   },
 
   renderSidebar() {
-    const pl = document.getElementById('project-list');
-    pl.innerHTML = this.projects.length
-      ? this.projects.map(p => `
-      <div class="project-item" data-project-id="${p.id}" onclick="app.selectProject('${p.id}')">
-        <span class="project-dot" style="background:${p.color}"></span>
-        <span class="project-item-name">${this.esc(p.name)}</span>
-        <span class="nav-badge" style="display:inline-flex">${this.tasks.filter(t => t.projectId === p.id && t.status !== 'done').length}</span>
-        <div class="project-item-actions">
-          <button class="btn-icon-sm" onclick="event.stopPropagation();app.editProject('${p.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          <button class="btn-icon-sm" onclick="event.stopPropagation();app.deleteProject('${p.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-        </div>
-      </div>`).join('')
-      : `<button class="sidebar-empty-projects" onclick="app.showProjectModal()">+ Create your first project</button>`;
-
-    const cu = this.getCurrentUser() || this.users[0];
-    if (cu) document.getElementById('current-user').innerHTML = `<div class="team-avatar" style="background:${this.safeColor(cu.color)}">${this.initials(cu.name)}</div><div style="min-width:0"><div style="font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px">${this.esc(cu.name)} ${this.getRoleBadge(cu.role)}</div></div><button class="btn-icon-sm" onclick="app.logout()" title="Sign out" style="margin-left:auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>`;
+    // The sidebar's project list and user identity are now Vue components
+    // (SidebarProjectList.vue, SidebarUser.vue) that read directly from the
+    // store via reactivity — no imperative DOM update needed here.
+    // populateSelects still has to run because filter/status <select>s aren't
+    // yet converted; once they are, this whole method can go.
     this.populateSelects();
   },
 

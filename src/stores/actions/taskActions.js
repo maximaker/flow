@@ -548,7 +548,7 @@ export const taskActions = {
           ${this.priorityBadge(st.priority)}
           ${childCount > 0 ? `<span class="task-subtask-badge" title="${childDone} of ${childCount} subtasks completed">${childDone}/${childCount}</span>` : ''}
           ${st.dueDate ? `<span class="task-list-due ${this.dueDateClass(st.dueDate)}" title="${this.formatDateAbsolute(st.dueDate)}">${this.formatDate(st.dueDate)}</span>` : ''}
-          ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
+          ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : `<div class="task-avatar-sm unassigned" title="Unassigned">?</div>`}
         </div>
         <button class="subtask-delete" onclick="event.stopPropagation();app.deleteSubtask('${st.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>`;
@@ -843,7 +843,7 @@ export const taskActions = {
     // Keep comment-list populated for backward compat but hidden
     document.getElementById('comment-list').innerHTML = (task.comments||[]).sort((a,b) => new Date(b.timestamp)-new Date(a.timestamp)).map(c => {
       const u = this.users.find(x => x.id === c.userId);
-      return `<div class="comment-item"><div class="comment-avatar" style="background:${u?.color||'#94a3b8'}">${this.initials(u?.name||'?')}</div><div class="comment-body"><div class="comment-header"><span class="comment-author">${this.esc(u?.name||'Unknown')}</span><span class="comment-time">${this.timeAgo(c.timestamp)}</span></div><p class="comment-text">${this.renderMarkdown(c.text)}</p></div></div>`;
+      return `<div class="comment-item"><div class="comment-avatar" style="background:${this.safeColor(u?.color, '#94a3b8')}">${this.initials(u?.name||'?')}</div><div class="comment-body"><div class="comment-header"><span class="comment-author">${this.esc(u?.name||'Unknown')}</span><span class="comment-time">${this.timeAgo(c.timestamp)}</span></div><p class="comment-text">${this.renderMarkdown(c.text)}</p></div></div>`;
     }).join('') || '';
   },
 
@@ -941,10 +941,10 @@ export const taskActions = {
 
     let html = '';
     if (type === 'assignee') {
-      html = this.users.map(u => `<div class="chip-dd-item ${u.id === task.assigneeId ? 'active' : ''}" onclick="app.setChipValue('assignee','${u.id}')"><div class="chip-avatar" style="background:${u.color}">${this.initials(u.name)}</div> ${this.esc(u.name)}</div>`).join('');
+      html = this.users.map(u => `<div class="chip-dd-item ${u.id === task.assigneeId ? 'active' : ''}" onclick="app.setChipValue('assignee','${u.id}')"><div class="chip-avatar" style="background:${this.safeColor(u.color)}">${this.initials(u.name)}</div> ${this.esc(u.name)}</div>`).join('');
       html += `<div class="chip-dd-item ${!task.assigneeId ? 'active' : ''}" onclick="app.setChipValue('assignee','')">Unassigned</div>`;
     } else if (type === 'project') {
-      html = this.projects.map(p => `<div class="chip-dd-item ${p.id === task.projectId ? 'active' : ''}" onclick="app.setChipValue('project','${p.id}')"><span class="chip-dot" style="background:${p.color}"></span> ${this.esc(p.name)}</div>`).join('');
+      html = this.projects.map(p => `<div class="chip-dd-item ${p.id === task.projectId ? 'active' : ''}" onclick="app.setChipValue('project','${p.id}')"><span class="chip-dot" style="background:${this.safeColor(p.color)}"></span> ${this.esc(p.name)}</div>`).join('');
       html += `<div class="chip-dd-item ${!task.projectId ? 'active' : ''}" onclick="app.setChipValue('project','')">No project</div>`;
     } else if (type === 'due') {
       html = `<div style="padding:8px"><input type="date" id="chip-date-input" value="${task.dueDate||''}" onchange="app.setChipValue('due',this.value)" class="chip-date-input"><div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap"><button class="quickpick-btn" onclick="app.setChipDate('today')">Today</button><button class="quickpick-btn" onclick="app.setChipDate('tomorrow')">Tomorrow</button><button class="quickpick-btn" onclick="app.setChipDate('nextweek')">Next Week</button><button class="quickpick-btn" onclick="app.setChipDate('none')">None</button></div></div>`;
@@ -1199,6 +1199,26 @@ export const taskActions = {
     this.templates.push({ name, priority, description, labelNames, subtasks: [] });
     this.saveTemplates();
     this.toast('Template saved', 'success');
+  },
+
+  // ===== QUICK ADD POPUP =====
+  // Sidebar-triggered popup that mirrors the Search popup pattern. Reads
+  // the input and runs the smart-parser in `quickAdd` below.
+  openQuickAdd() {
+    const overlay = document.getElementById('quick-add-overlay');
+    if (!overlay) return;
+    overlay.classList.add('show');
+    const input = document.getElementById('quick-add-popup-input');
+    if (input) {
+      input.value = '';
+      // Focus on next tick so the show-class transition can run first.
+      setTimeout(() => input.focus(), 30);
+    }
+  },
+
+  closeQuickAdd() {
+    const overlay = document.getElementById('quick-add-overlay');
+    if (overlay) overlay.classList.remove('show');
   },
 
   // ===== QUICK ADD =====
