@@ -80,5 +80,5 @@ export const projectActions = {
     this.save(); this.render(); this.toast('Project deleted', 'success');
   },
 
-  selectProject(id) { this.selectedProjectId = id; this.switchView('project'); },
-}
+  // ===== ARCHIVE / UNARCHIVE =====
+  // Archive moves a project out of the active l

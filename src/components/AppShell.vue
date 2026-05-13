@@ -2,21 +2,11 @@
   <div id="app" :data-theme="store.theme">
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-brand sidebar-logo">
-        <div class="brand-icon">
-          <svg class="flow-logo" width="32" height="32" viewBox="0 0 32 32">
-            <defs>
-              <linearGradient id="flow-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:var(--accent);stop-opacity:1" />
-                <stop offset="100%" style="stop-color:var(--accent);stop-opacity:0.8" />
-              </linearGradient>
-            </defs>
-            <path class="flow-path" d="M6 8 C10 8, 12 6, 16 6 C20 6, 22 10, 26 10 M6 16 C10 16, 12 14, 16 14 C20 14, 22 18, 26 18 M6 24 C10 24, 12 22, 16 22 C20 22, 22 26, 26 26"
-              fill="none" stroke="url(#flow-grad)" stroke-width="2.5" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <span class="brand-name">Flow</span>
-      </div>
+      <!-- User-as-brand row at top, matching n.thedigitalvitamins.com.
+           Clicking it opens Settings (where the user can manage their account). -->
+      <a href="#" class="sidebar-brand sidebar-brand-user" data-view="settings" :aria-label="`Open settings for ${currentUserName}`">
+        <SidebarUser :brand="true" />
+      </a>
 
       <nav class="sidebar-nav">
         <div class="nav-section">
@@ -73,6 +63,9 @@
           <div class="project-list accordion-body"><SidebarProjectList /></div>
         </div>
 
+        <!-- Recents (Notion-style): last 5 projects opened, per device. -->
+        <SidebarRecents />
+
         <div class="nav-section">
           <div class="nav-section-header" onclick="this.parentElement.classList.toggle('collapsed')">
             <div class="nav-section-toggle">
@@ -95,7 +88,6 @@
       </nav>
 
       <div class="sidebar-footer">
-        <SidebarUser />
         <a href="#" class="nav-item settings-nav-link" data-view="settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -185,9 +177,8 @@
               </div>
             </div>
           </div>
-          <div class="kbd-hint" role="button" tabindex="0" @click="store.openCommandPalette()" @keydown.enter.prevent="store.openCommandPalette()" @keydown.space.prevent="store.openCommandPalette()">
-            <kbd>Ctrl</kbd><kbd>K</kbd>
-          </div>
+          <!-- Topbar shortcut hint removed; the sidebar's Search row already
+               shows the Ctrl K kbd next to the search trigger. -->
         </div>
       </header>
 
@@ -632,6 +623,35 @@
         <div class="panel-main">
           <div id="panel-parent-link" class="hidden"></div>
 
+          <!-- Page icon (Notion-style) — clickable emoji slot above title.
+               Populated by openTask() with a deterministic default until the
+               user picks one. Click opens a palette picker. -->
+          <div class="panel-page-icon-wrap">
+            <button
+              type="button"
+              class="panel-page-icon"
+              id="panel-page-icon"
+              aria-label="Task icon (click to change)"
+              aria-haspopup="true"
+              @click="store.toggleTaskIconPicker($event)"
+            >📝</button>
+            <div class="panel-page-icon-picker hidden" id="panel-page-icon-picker" role="menu" aria-label="Choose task icon">
+              <div class="icon-picker-grid">
+                <button
+                  v-for="emoji in TASK_EMOJI_PALETTE"
+                  :key="emoji"
+                  type="button"
+                  class="icon-picker-cell"
+                  :aria-label="`Use ${emoji}`"
+                  @click="store.setTaskIcon(emoji)"
+                >{{ emoji }}</button>
+              </div>
+              <div class="icon-picker-footer">
+                <button type="button" class="btn-ghost" @click="store.removeTaskIcon()">Remove icon</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Title -->
           <input type="text" class="panel-title-input" id="panel-title" placeholder="Task name">
           <span class="panel-saved-indicator" id="panel-saved-indicator">Saved</span>
@@ -660,6 +680,29 @@
             </div>
             <!-- Hidden dropdown for chips -->
             <div class="chip-dropdown hidden" id="chip-dropdown"></div>
+
+            <!-- Extended property rows promoted out of "More details" so the
+                 full task property list reads inline (Notion's pattern). -->
+            <div class="meta-row">
+              <label>Effort</label>
+              <select id="panel-effort-visible" class="meta-select" onchange="app.syncMoreField('effort')">
+                <option value="">None</option>
+                <option value="trivial">&lt; 1h</option>
+                <option value="small">1-2h</option>
+                <option value="medium">Half day</option>
+                <option value="large">1-2 days</option>
+                <option value="xl">3-5 days</option>
+                <option value="epic">1+ week</option>
+              </select>
+            </div>
+            <div class="meta-row">
+              <label>Labels</label>
+              <div class="label-picker" id="panel-labels-visible"></div>
+            </div>
+            <div class="meta-row">
+              <label>Blocked by</label>
+              <select id="panel-blocked-visible" class="meta-select" multiple onchange="app.syncMoreField('blocked')"></select>
+            </div>
           </div>
 
           <!-- Hidden selects for data binding -->
@@ -752,39 +795,32 @@
             <div id="activity-log" class="activity-log hidden"></div>
           </div>
 
-          <!-- More Details (collapsible) -->
-          <div class="panel-section panel-more-section">
-            <button class="panel-more-toggle" onclick="this.closest('.panel-more-section').classList.toggle('expanded')">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-              More details
-            </button>
-            <div class="panel-more-content">
-              <div class="meta-row"><label>Effort</label><select id="panel-effort-visible" class="meta-select" onchange="app.syncMoreField('effort')">
-                <option value="">None</option><option value="trivial">&lt; 1h</option><option value="small">1-2h</option>
-                <option value="medium">Half day</option><option value="large">1-2 days</option>
-                <option value="xl">3-5 days</option><option value="epic">1+ week</option>
-              </select></div>
-              <div class="meta-row"><label>Labels</label><div class="label-picker" id="panel-labels-visible"></div></div>
-              <div class="meta-row"><label>Blocked by</label><select id="panel-blocked-visible" class="meta-select" multiple onchange="app.syncMoreField('blocked')"></select></div>
-              <div class="panel-section hidden" id="panel-deps-section">
-                <h4>Dependencies</h4><div id="panel-deps-info" class="deps-info"></div>
-              </div>
-              <div class="panel-section">
-                <div class="section-header"><h4>Deliverables</h4><button class="btn-text" @click="store.addDeliverable()">+ Add</button></div>
-                <div id="deliverable-list" class="deliverable-list"></div>
-              </div>
-              <div class="panel-section">
-                <div class="section-header">
-                  <h4>Attachments</h4>
-                  <button class="btn-text" onclick="document.getElementById('file-input').click()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                    Add file
-                  </button>
-                  <input type="file" id="file-input" hidden multiple onchange="app.handleFileUpload(event)">
-                </div>
-                <div id="attachment-list" class="attachment-list"></div>
-              </div>
+          <!-- Dependencies (only renders when the task has blockers/blockees). -->
+          <div class="panel-section hidden" id="panel-deps-section">
+            <h4>Dependencies</h4>
+            <div id="panel-deps-info" class="deps-info"></div>
+          </div>
+
+          <!-- Deliverables -->
+          <div class="panel-section">
+            <div class="section-header">
+              <h4>Deliverables</h4>
+              <button class="btn-text" @click="store.addDeliverable()">+ Add</button>
             </div>
+            <div id="deliverable-list" class="deliverable-list"></div>
+          </div>
+
+          <!-- Attachments -->
+          <div class="panel-section">
+            <div class="section-header">
+              <h4>Attachments</h4>
+              <button class="btn-text" onclick="document.getElementById('file-input').click()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                Add file
+              </button>
+              <input type="file" id="file-input" hidden multiple onchange="app.handleFileUpload(event)">
+            </div>
+            <div id="attachment-list" class="attachment-list"></div>
           </div>
         </div>
       </div>
@@ -936,9 +972,81 @@
           </div>
           <div class="form-group"><label>Description</label><textarea id="modal-project-desc" placeholder="Project description..." rows="3"></textarea></div>
         </div>
+        <div class="modal-footer modal-footer-split">
+          <!-- Destructive actions only appear when editing (not on create) -->
+          <div class="modal-footer-left">
+            <template v-if="store.editingProjectId">
+              <button
+                v-if="!editingProjectArchived"
+                type="button"
+                class="btn-ghost btn-ghost-warn"
+                @click="store.archiveFromEdit()"
+                title="Archive this project"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                Archive
+              </button>
+              <button
+                v-else
+                type="button"
+                class="btn-ghost"
+                @click="store.unarchiveFromEdit()"
+                title="Restore this project"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 4 3 10 9 10"/></svg>
+                Restore
+              </button>
+              <button
+                type="button"
+                class="btn-ghost btn-ghost-danger"
+                @click="store.deleteFromEdit()"
+                title="Delete this project"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                Delete
+              </button>
+            </template>
+          </div>
+          <div class="modal-footer-right">
+            <button class="btn-secondary" @click="store.closeProjectModal()">Cancel</button>
+            <button class="btn-primary" id="project-modal-save" @click="store.saveProject()">Create Project</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Archive Project Modal -->
+    <div class="modal-overlay" id="archive-modal-overlay" @click.self="store.closeArchiveModal()">
+      <div class="modal modal-compact">
+        <div class="modal-header">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="vertical-align: -3px; margin-right: 6px;"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+            Archive project
+          </h3>
+          <button class="btn-icon" @click="store.closeArchiveModal()" aria-label="Close">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="archive-modal-lead">
+            You're archiving <strong id="archive-modal-project-name"></strong>. It'll move to the
+            <em>Archived</em> section in the sidebar and you can restore it any time.
+          </p>
+          <div class="archive-modal-warning" id="archive-modal-warning" role="status"></div>
+          <div class="form-group">
+            <label for="archive-modal-note">Note (optional)</label>
+            <textarea
+              id="archive-modal-note"
+              rows="3"
+              placeholder="Why are you archiving this? Any handoff context for future-you…"
+              maxlength="2000"
+            ></textarea>
+            <small class="form-hint">Shown on the archived item's hover tooltip and on the project page.</small>
+          </div>
+        </div>
         <div class="modal-footer">
-          <button class="btn-secondary" @click="store.closeProjectModal()">Cancel</button>
-          <button class="btn-primary" id="project-modal-save" @click="store.saveProject()">Create Project</button>
+          <button class="btn-secondary" @click="store.closeArchiveModal()">Cancel</button>
+          <button class="btn-primary" @click="store.confirmArchive()">Archive project</button>
         </div>
       </div>
     </div>
@@ -1189,110 +1297,4 @@
         <div class="shortcut-row"><kbd>Ctrl+K</kbd><span>Command palette</span></div>
         <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>Undo</span></div>
         <div class="shortcut-row"><kbd>Ctrl+N</kbd><span>New task</span></div>
-        <div class="shortcut-row"><kbd>B</kbd><span>Board view</span></div>
-        <div class="shortcut-row"><kbd>H</kbd><span>Home</span></div>
-        <div class="shortcut-row"><kbd>T</kbd><span>Timeline</span></div>
-        <div class="shortcut-row"><kbd>L</kbd><span>List view</span></div>
-        <div class="shortcut-row"><kbd>Esc</kbd><span>Close panel</span></div>
-      </div>
-    </button>
-
-    <!-- Conversational task creation -->
-    <div class="conv-task-overlay" id="conv-task-overlay">
-      <div class="conv-task-modal" id="conv-task-modal">
-        <div class="conv-task-header">
-          <div class="conv-task-header-left">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            New task
-          </div>
-          <div class="conv-task-header-right">
-            <button class="conv-advanced-link" @click="store.closeConvTask(); app.showTaskModal()">Advanced form</button>
-            <button class="conv-close-btn" @click="store.closeConvTask()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Answered questions scroll up here as a thread -->
-        <div class="conv-thread" id="conv-thread"></div>
-
-        <!-- Current question -->
-        <div class="conv-current-block">
-          <p class="conv-current-question" id="conv-current-question"></p>
-          <p class="conv-current-hint" id="conv-current-hint"></p>
-        </div>
-
-        <!-- Dynamic input area -->
-        <div class="conv-input-area" id="conv-input-area"></div>
-
-        <!-- Skip -->
-        <div class="conv-skip-row">
-          <button class="conv-skip-btn" id="conv-skip-btn" @click="store._convSkip()">Skip</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tour overlay (spotlight backdrop) -->
-    <div id="tour-overlay" class="tour-overlay"></div>
-
-    <!-- Tour tooltip -->
-    <div id="tour-tooltip" class="tour-tooltip">
-      <div class="tour-tooltip-header">
-        <span id="tour-step-label" class="tour-step-label">Step 1 of 6</span>
-        <button class="tour-skip-btn" @click="store.skipTour()">Skip tour</button>
-      </div>
-      <h3 id="tour-title" class="tour-title"></h3>
-      <p id="tour-body" class="tour-body"></p>
-      <div id="tour-dots" class="tour-dots"></div>
-      <div class="tour-footer">
-        <button id="tour-prev" class="btn-secondary btn-sm" @click="store.prevTourStep()">← Back</button>
-        <button id="tour-next" class="btn-primary btn-sm" @click="store.nextTourStep()">Next →</button>
-      </div>
-    </div>
-  </div>
-</template>
-
-<script setup>
-import { computed, onMounted, nextTick } from 'vue'
-import { useAppStore } from '../stores/app.js'
-import Breadcrumb from './Breadcrumb.vue'
-import SidebarProjectList from './SidebarProjectList.vue'
-import SidebarUser from './SidebarUser.vue'
-import NotificationsList from './NotificationsList.vue'
-import HomeUpcomingDeadlines from './HomeUpcomingDeadlines.vue'
-import HomeRecentActivity from './HomeRecentActivity.vue'
-import HomeMyTasksOverview from './HomeMyTasksOverview.vue'
-import WorkloadChart from './WorkloadChart.vue'
-import SettingsAppearance from './SettingsAppearance.vue'
-
-const store = useAppStore()
-
-// Reactive nav-counter values previously updated imperatively by
-// renderNavBadges. The Vue templates above bind directly to these.
-const openTaskCount = computed(() => store.tasks.filter(t => t.status !== 'done' && store.isRootTask(t)).length)
-const inProgressCount = computed(() => store.tasks.filter(t => t.status === 'in-progress' && store.isRootTask(t)).length)
-const unreadCount = computed(() => store.notifications.filter(n => !n.read).length)
-
-// OS-aware shortcut label for the Search kbd hint.
-const shortcutLabel = computed(() => {
-  if (typeof navigator === 'undefined') return 'Ctrl K'
-  return /Mac|iPhone|iPad/i.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
-})
-
-// Quick-add popup Enter handler — reads the input, runs the smart-parser
-// in `quickAdd`, closes the popup. Empty input is a no-op (the store
-// already guards against that, but we close anyway for snappier feedback).
-function onQuickAddEnter (e) {
-  const input = e.target
-  const text = (input.value || '').trim()
-  if (text) store.quickAdd(text)
-  input.value = ''
-  store.closeQuickAdd()
-}
-
-onMounted(async () => {
-  await nextTick()
-  store.bindEvents()
-  store.render()
-})
-</script>
+        <div cl
