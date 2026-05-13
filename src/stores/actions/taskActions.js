@@ -176,6 +176,10 @@ export const taskActions = {
     }
 
     document.getElementById('panel-title').value = task.title;
+    // Task page-icon (Notion-style). Uses task.icon if set, otherwise a
+    // deterministic default from the palette.
+    const iconEl = document.getElementById('panel-page-icon');
+    if (iconEl) iconEl.textContent = this.defaultTaskEmoji(task);
     document.getElementById('panel-assignee').value = task.assigneeId || '';
     document.getElementById('panel-due').value = task.dueDate || '';
     document.getElementById('panel-project').value = task.projectId || '';
@@ -222,14 +226,15 @@ export const taskActions = {
 
     document.getElementById('task-overlay').classList.add('show');
     document.getElementById('task-panel').classList.add('open');
-    this.renderBreadcrumb();
+    // Breadcrumb is now a Vue component reading reactive store state
+    // (currentTaskId); no imperative call needed here.
   },
 
   closeTaskPanel() {
     document.getElementById('task-overlay').classList.remove('show');
     document.getElementById('task-panel').classList.remove('open');
     this.currentTaskId = null;
-    this.renderBreadcrumb();
+    // Breadcrumb is now a reactive Vue component; no imperative call needed.
   },
 
   saveTaskFromPanel(silent) {
@@ -288,7 +293,9 @@ export const taskActions = {
       preview.innerHTML = this.renderDescriptionMd(md);
       preview.classList.remove('empty');
     } else {
-      preview.innerHTML = '<span class="desc-placeholder">Add a description… <em>supports **bold**, - lists, - [ ] checklists</em></span>';
+      // Notion-style: quiet single-line "click to add" affordance. The full
+      // markdown syntax hint moves into the editor toolbar (already there).
+      preview.innerHTML = '<span class="desc-placeholder">Add a description…</span>';
       preview.classList.add('empty');
     }
   },
@@ -904,6 +911,25 @@ export const taskActions = {
     if (indicator) { indicator.classList.add('show'); clearTimeout(this._savedTimer); this._savedTimer = setTimeout(() => indicator.classList.remove('show'), 1500); }
   },
 
+  // ===== TASK PAGE-ICON (Notion-style emoji slot) =====
+  // Click the icon to cycle through a small palette. Persists on the task.
+  cycleTaskIcon() {
+    if (!this.currentTaskId) return;
+    const task = this.tasks.find(t => t.id === this.currentTaskId);
+    if (!task) return;
+    if (!this._taskIconPalette) {
+      // Lazy import — same palette used by defaultTaskEmoji.
+      this._taskIconPalette = ['📝','📌','✅','💡','🎯','🚧','🔧','🛠️','🧪','🔍','📊','📐','✏️','🖋️','🗒️','📎','🧭','🚀','⚡','🌟','🔥','🎨','🧱','📦','🎒','🪄','📞','💬','🔔','📅'];
+    }
+    const p = this._taskIconPalette;
+    const current = task.icon || this.defaultTaskEmoji(task);
+    const idx = p.indexOf(current);
+    task.icon = p[(idx + 1) % p.length];
+    const el = document.getElementById('panel-page-icon');
+    if (el) el.textContent = task.icon;
+    this.save();
+  },
+
   // ===== CONTEXT CHIP INTERACTIONS =====
   cycleChipStatus() {
     if (!this.currentTaskId) return;
@@ -1259,39 +1285,4 @@ export const taskActions = {
     if (!projectId && this.currentView === 'project' && this.selectedProjectId) projectId = this.selectedProjectId;
     if (!projectId && this.projects.length === 1) projectId = this.projects[0].id;
 
-    this.tasks.push({ id: this.generateId(), title, description: '', status: 'todo', projectId, assigneeId, dueDate, priority, labelIds, blockedBy: [], order: this.tasks.filter(t => t.status === 'todo').length, parentId: '', deliverables: [], attachments: [], comments: [], activityLog: [{ text: 'Task created via quick add', timestamp: new Date().toISOString() }], createdAt: new Date().toISOString().split('T')[0] });
-    this.save(); this.render();
-    this.toast(`Task "${title}" created`, 'success');
-  },
-
-  // ===== ADHD HELPERS =====
-
-  startTask(taskId) {
-    const task = this.tasks.find(t => t.id === taskId);
-    if (!task) return;
-    // Prefer a column whose id/name suggests "in progress"; fall back to second column
-    const progressCol = this.boardColumns.find(c =>
-      /progress|doing|active|started/i.test(c.id + c.name)
-    ) || this.boardColumns[1] || this.boardColumns[0];
-    if (!progressCol || task.status === progressCol.id) return;
-    this.pushUndo('Task started');
-    task.status = progressCol.id;
-    this.save();
-    this.render();
-    this.toast(`▶ Started — focus on: ${task.title}`);
-  },
-
-  snoozeTask(taskId, when) {
-    const task = this.tasks.find(t => t.id === taskId);
-    if (!task) return;
-    this.pushUndo('Task snoozed');
-    const d = new Date(); d.setHours(0, 0, 0, 0);
-    if (when === 'tomorrow') d.setDate(d.getDate() + 1);
-    else if (when === 'week')  d.setDate(d.getDate() + 7);
-    task.dueDate = d.toISOString().split('T')[0];
-    this.save();
-    this.renderMyTasks();
-    const label = when === 'tomorrow' ? 'tomorrow' : 'next week';
-    this.toast(`Snoozed — back on your list ${label}`);
-  },
-}
+    this.tasks.push({ id: this.generateId(), title, description: '', status: 'todo', projectId, assigneeId, dueDate, priority, labelIds, blockedBy: [], order: this.tasks.filter(t => t.status === 'todo').length, parentId: '', deliverables: [], a

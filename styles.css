@@ -792,17 +792,23 @@ body {
 }
 .panel-parent-link-a:hover { color: var(--text); background: var(--bg); }
 
-/* ===== Subtask Row (panel child tasks) ===== */
+/* ===== Subtask Row (panel child tasks) =====
+ * Notion-flat: no card chrome. Rows separate via hairline dividers, hover
+ * gives a subtle bg highlight (same pattern as nested-page links in Notion).
+ */
 .subtask-row {
-  display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px;
-  background: var(--bg); border: 1px solid var(--border-light); transition: all var(--transition);
+  display: flex; align-items: center; gap: 8px; padding: 8px 8px; border-radius: 4px;
+  background: transparent; border: none;
+  border-bottom: 1px solid var(--border-light);
+  transition: background-color var(--transition);
   cursor: default;
 }
-.subtask-row:hover { border-color: var(--border); }
+.subtask-row:last-child { border-bottom: none; }
+.subtask-row:hover { background: var(--bg-hover); }
 .subtask-row.dragging { opacity: 0.4; }
-.subtask-row.drop-target { border-color: var(--text-light); }
+.subtask-row.drop-target { background: var(--bg-hover); }
 .subtask-row-title {
-  flex: 1; font-size: 13px; color: var(--text); cursor: pointer; min-width: 0;
+  flex: 1; font-size: 14px; color: var(--text); cursor: pointer; min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .subtask-row-title:hover { color: var(--accent); }
@@ -1025,7 +1031,10 @@ body {
   border-bottom: 1px solid var(--border); flex-shrink: 0;
 }
 .panel-header-left { display: flex; align-items: center; gap: 12px; }
-.panel-task-status { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+/* Soft top status: a calm muted label, not a screaming pill. The property
+ * list below is now the primary status source — this just confirms it at a
+ * glance for users who didn't scroll. */
+.panel-task-status { font-size: 11px; font-weight: 500; padding: 0; border-radius: 0; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-light); background: transparent !important; }
 
 .panel-body { flex: 1; overflow-y: auto; padding: 20px; }
 .panel-body::-webkit-scrollbar { width: 4px; }
@@ -1033,10 +1042,28 @@ body {
 /* Page-style title input — matches the view-header rhythm. Focus uses the
  * global :focus-visible accent ring rather than an underline (the underline
  * gave it a "search field" look rather than "page heading"). */
+/* Notion's per-page emoji slot — sits above the title, large (~56px), clickable
+ * to cycle through the palette. Defaults to a deterministic emoji per task. */
+.panel-page-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 64px; height: 64px;
+  background: transparent; border: none;
+  border-radius: 8px;
+  font-size: 56px; line-height: 1;
+  padding: 0; margin: 0 0 8px -8px;
+  cursor: pointer;
+  transition: background-color var(--transition), transform var(--transition);
+}
+.panel-page-icon:hover { background: var(--bg-hover); transform: scale(1.06); }
+.panel-page-icon:active { transform: scale(0.98); }
+
 .panel-title-input {
-  width: 100%; border: none; background: none; font-size: 24px; font-weight: 700;
-  color: var(--text); padding: 4px 0; margin: 0 0 8px;
-  outline: none; letter-spacing: -0.02em; line-height: 1.2;
+  width: 100%; border: none; background: none;
+  /* Notion's page-title pattern: bigger, bolder. 32px reads as a page hero
+   * inside the panel without overwhelming the property list below. */
+  font-size: 32px; font-weight: 700;
+  color: var(--text); padding: 4px 0; margin: 0 0 16px;
+  outline: none; letter-spacing: -0.02em; line-height: 1.15;
 }
 .panel-title-input::placeholder { color: var(--text-light); opacity: 0.5; }
 
@@ -2406,13 +2433,46 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .recent-tasks-list { display: flex; flex-direction: column; gap: 2px; }
 
 /* ===== Context Chips ===== */
-.context-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 16px; position: relative; }
-.context-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; color: var(--text); background: var(--bg-secondary); cursor: pointer; transition: all 0.15s ease; border: 1px solid transparent; white-space: nowrap; }
-.context-chip:hover { border-color: var(--border); background: var(--bg-white); }
-.context-chip.chip-muted { color: var(--text-light); opacity: 0.7; }
-.context-chip.chip-muted:hover { opacity: 1; }
-.context-chip.chip-overdue { background: var(--danger-bg); color: var(--danger); }
-.context-chip.chip-soon { background: var(--warning-bg); color: var(--warning); }
+/* Task panel context chips — Notion's page-property pattern.
+ * Each property gets its own row with a fixed-width label on the left and
+ * the value on the right. ::before injects labels per chip id so we don't
+ * have to change the template markup. Hover gives a subtle bg highlight.
+ */
+.context-chips { display: flex; flex-direction: column; gap: 2px; margin: 16px 0 20px; position: relative; }
+.context-chip {
+  display: flex; align-items: center;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 14px; font-weight: 400;
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color var(--transition);
+  border: none;
+  white-space: nowrap;
+  gap: 8px;
+  position: relative;
+}
+.context-chip:hover { background: var(--bg-hover); }
+/* Each chip's "label" — fixed 100px column on the left, muted typography.
+ * Maps to Notion's "Status / Assignee / Due / Priority / Project" left rail. */
+.context-chip::before {
+  display: inline-flex; align-items: center;
+  width: 96px; flex-shrink: 0;
+  font-size: 13px; color: var(--text-light); font-weight: 400;
+}
+#chip-status::before   { content: 'Status'; }
+#chip-assignee::before { content: 'Assignee'; }
+#chip-due::before      { content: 'Due'; }
+#chip-priority::before { content: 'Priority'; }
+#chip-project::before  { content: 'Project'; }
+.context-chip.chip-muted { color: var(--text-light); }
+.context-chip.chip-muted:hover { color: var(--text); }
+.context-chip.chip-overdue { color: var(--danger); }
+.context-chip.chip-overdue:hover { background: var(--danger-bg); }
+.context-chip.chip-soon { color: var(--warning); }
+.context-chip.chip-soon:hover { background: var(--warning-bg); }
 .chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .chip-avatar { width: 18px; height: 18px; border-radius: 50%; font-size: 8px; font-weight: 600; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
@@ -3493,58 +3553,4 @@ input:focus, select:focus, textarea:focus { outline: none; }
   }
   .task-list-right:empty { display: none; }
 
-  /* HIDE verbose action buttons — they belong in the task panel */
-  .task-start-btn { display: none !important; }
-  .task-snooze-group { display: none !important; }
-  .task-attachment-icon { display: none; }
-
-  /* Effort badge: hide from list — it's in the panel */
-  .task-list-right .effort-badge { display: none; }
-
-  /* Avatars in list: tiny */
-  .task-avatar-sm { width: 18px; height: 18px; font-size: 7px; }
-
-  /* Subtask badge: compact */
-  .task-subtask-badge { font-size: 9px; padding: 0 4px; border-radius: 8px; }
-
-  /* On phones the row is too narrow for an inline meta. Wrap the row so the
-   * meta drops to its own line below the title, indented under the title text. */
-  .task-list-row { flex-wrap: wrap; }
-  .task-list-right { order: 1; margin-left: auto; }
-  .task-list-meta {
-    order: 2;
-    flex-basis: 100%;
-    padding: 2px 10px 4px var(--meta-indent, 38px) !important;
-    flex-wrap: nowrap; gap: 4px;
-    overflow: hidden;
-    font-size: 11px;
-  }
-  .task-list-meta .priority-badge,
-  .task-list-meta .task-list-project,
-  .task-list-meta .task-list-due,
-  .task-list-meta .blocked-indicator,
-  .task-list-meta .label-tag {
-    visibility: visible !important; opacity: 1 !important;
-    font-size: 10px;
-    white-space: nowrap;
-  }
-  .task-list-meta .priority-badge { padding: 0 4px; font-size: 9px; }
-  .task-list-meta .task-list-project { font-size: 10px; padding: 0 4px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
-  .task-list-meta .task-list-due { font-size: 10px; }
-  .task-list-meta .label-tag { font-size: 9px; padding: 0 3px; }
-  .task-list-meta .rescue-btn { font-size: 9px; padding: 0 4px; }
-
-  /* Inline add row — hidden on mobile, FAB is the add entry point */
-  .inline-add-row { display: none; }
-
-  /* ── Home view ── */
-  .home-grid { grid-template-columns: 1fr !important; gap: 10px; }
-  .home-card { padding: 12px; }
-  .welcome-card h2 { font-size: 18px; }
-  .welcome-card .subtitle { font-size: 13px; }
-  .home-stats { gap: 14px; }
-  .home-stat { font-size: 13px; }
-  .home-stat-num { font-size: 15px; }
-
-  /* ══════════════════════════════════════════════════════
-     MY TASK
+  /* HIDE verbose action buttons — t

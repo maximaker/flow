@@ -623,6 +623,17 @@
         <div class="panel-main">
           <div id="panel-parent-link" class="hidden"></div>
 
+          <!-- Page icon (Notion-style) — clickable emoji slot above title.
+               Populated by openTask() with a deterministic default until the
+               user picks one. Click cycles through a small palette. -->
+          <button
+            type="button"
+            class="panel-page-icon"
+            id="panel-page-icon"
+            aria-label="Task icon (click to change)"
+            @click="store.cycleTaskIcon()"
+          >📝</button>
+
           <!-- Title -->
           <input type="text" class="panel-title-input" id="panel-title" placeholder="Task name">
           <span class="panel-saved-indicator" id="panel-saved-indicator">Saved</span>
@@ -1265,10 +1276,4 @@
       <div class="conv-task-modal" id="conv-task-modal">
         <div class="conv-task-header">
           <div class="conv-task-header-left">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            New task
-          </div>
-          <div class="conv-task-header-right">
-            <button class="conv-advanced-link" @click="store.closeConvTask(); app.showTaskModal()">Advanced form</button>
-            <button class="conv-close-btn" @click="store.closeConvTask()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><pat

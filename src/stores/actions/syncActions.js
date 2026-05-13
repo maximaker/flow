@@ -45,6 +45,7 @@ export const syncActions = {
         deliverables: r.deliverables || [], attachments: r.attachments || [],
         comments: r.comments || [], activityLog: r.activityLog || [],
         createdAt: r.createdAt || r.created?.split(' ')[0] || '',
+        icon: r.icon || '',
       }));
       this.notifications = validIds(notifications).map(r => ({ id: r.id, type: r.type, text: r.text, taskId: r.taskId, read: r.read, timestamp: r.timestamp }));
       this.labels = validIds(labels).map(r => ({ id: r.id, name: r.name, color: r.color }));
@@ -195,6 +196,7 @@ export const syncActions = {
             parentId: r.parentId, order: r.order, effort: r.effort,
             deliverables: r.deliverables, attachments: r.attachments,
             comments: r.comments, activityLog: r.activityLog, createdAt: r.createdAt,
+            icon: r.icon || '',
           }),
         },
         {
@@ -284,6 +286,7 @@ export const syncActions = {
           deliverables: r.deliverables || [], attachments: r.attachments || [],
           comments: r.comments || [], activityLog: r.activityLog || [],
           createdAt: r.createdAt || r.created?.split(' ')[0] || '',
+          icon: r.icon || '',
         }),
       },
       { name: 'labels',        store: 'labels',        map: r => ({ id: r.id, name: r.name, color: r.color }) },
@@ -466,4 +469,4 @@ export const syncActions = {
     ];
     this.notifications = [
       { id: this.generateId(), type: 'deadline', text: 'Deadline approaching: "User onboarding screens" is due tomorrow', taskId: t4, read: false, timestamp: new Date().toISOString() },
-      { id: this.generateId(), type: 'assign',   text: 'You were assigned to "Design homepage mockups"',               taskId: t1, read: false, timestamp: ne
+      { id: this.generateId(), type: 'assign',   text: 'You were as

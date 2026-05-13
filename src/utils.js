@@ -28,6 +28,27 @@ export function defaultProjectEmoji(project) {
   return DEFAULT_PROJECT_EMOJIS[h % DEFAULT_PROJECT_EMOJIS.length];
 }
 
+/**
+ * Task page icon — Notion's per-page emoji pattern. Returns the task's own
+ * `icon` if set, otherwise a deterministic default from a broader palette so
+ * every task page reads as a distinct document, not a faceless row.
+ */
+const DEFAULT_TASK_EMOJIS = [
+  '📝','📌','✅','💡','🎯','🚧','🔧','🛠️','🧪','🔍',
+  '📊','📐','✏️','🖋️','🗒️','📎','🧭','🚀','⚡','🌟',
+  '🔥','🎨','🧱','📦','🎒','🪄','📞','💬','🔔','📅',
+];
+export function defaultTaskEmoji(task) {
+  if (!task) return '📝';
+  if (task.icon) return task.icon;
+  const key = task.id || task.title || '';
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return DEFAULT_TASK_EMOJIS[h % DEFAULT_TASK_EMOJIS.length];
+}
+
+export const TASK_EMOJI_PALETTE = DEFAULT_TASK_EMOJIS;
+
 /** HTML-escape a string */
 export function esc(str) {
   const d = document.createElement('div');
@@ -218,28 +239,4 @@ export function renderDescriptionMd(text) {
       openList('check');
       const done = chkM[1].toLowerCase() === 'x';
       html += `<li class="md-check-item">` +
-        `<button class="md-checkbox${done ? ' checked' : ''}" onclick="app.toggleDescCheck(${i})" aria-label="${done ? 'Mark incomplete' : 'Mark complete'}"></button>` +
-        `<span class="md-check-label${done ? ' md-check-done' : ''}">${inlineMd(esc(chkM[2]))}</span>` +
-        `</li>`;
-      continue;
-    }
-
-    // Unordered list
-    const ulM = raw.match(/^[-*] (.*)/);
-    if (ulM) { openList('ul'); html += `<li>${inlineMd(esc(ulM[1]))}</li>`; continue; }
-
-    // Ordered list
-    const olM = raw.match(/^\d+\. (.*)/);
-    if (olM) { openList('ol'); html += `<li>${inlineMd(esc(olM[1]))}</li>`; continue; }
-
-    // Blockquote
-    if (raw.startsWith('> ')) {
-      closeList();
-      html += `<blockquote class="md-blockquote">${inlineMd(esc(raw.slice(2)))}</blockquote>`;
-      continue;
-    }
-
-    // Empty line → paragraph break spacer
-    if (raw.trim() === '') {
-      closeList();
-      html += '<div class="md-gap"></div>'
+        `<button class="md-checkbox${done ? ' checked' : ''}" onclick="app.toggleDescChec

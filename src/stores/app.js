@@ -98,6 +98,8 @@ export const useAppStore = defineStore('app', {
   safeUrl:    utils.safeUrl,
   safeId:     utils.safeId,
   initials:   utils.initials,
+  defaultProjectEmoji: utils.defaultProjectEmoji,
+  defaultTaskEmoji:    utils.defaultTaskEmoji,
   relativeDate:      utils.relativeDate,
   formatDate:        utils.formatDate,
   formatDateShort:   utils.formatDateShort,
@@ -956,6 +958,4 @@ export const useAppStore = defineStore('app', {
   },
 
   moveBoardColumn(id, direction) {
-    const idx = this.boardColumns.findIndex(c => c.id === id);
-    if (idx < 0) return;
-    const newIdx = idx +
+    const idx =
