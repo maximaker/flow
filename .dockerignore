@@ -1,4 +1,14 @@
 node_modules
+dist
 .git
 .gitignore
+.github
+.gitattributes
 .claude
+.env
+.env.*
+*.log
+*.md
+tests
+.vscode
+.idea

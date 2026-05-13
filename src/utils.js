@@ -27,6 +27,31 @@ export function safeColor(c, fallback = '#7a7a7a') {
   return fallback;
 }
 
+/**
+ * Sanitise a user-supplied URL before injecting into an href="..." attribute.
+ * Allows http:, https:, mailto:, and same-origin (relative paths, fragments, queries).
+ * Rejects javascript:, data:, vbscript:, and any other scheme.
+ * Percent-encodes quote characters so the value can't break out of the attribute.
+ */
+export function safeUrl(u, fallback = '#') {
+  if (!u) return fallback;
+  const trimmed = String(u).trim();
+  // Reject control characters and whitespace tricks like "java\nscript:..."
+  // eslint-disable-next-line no-control-regex -- intentional: this IS the control-char guard
+  if (/[\x00-\x1f\x7f]/.test(trimmed)) return fallback;
+  if (!/^(?:https?:|mailto:|\/|#|\?)/i.test(trimmed)) return fallback;
+  return trimmed.replace(/"/g, '%22').replace(/'/g, '%27');
+}
+
+/**
+ * 15-char lowercase alphanumeric — the format PocketBase auto-generates and the
+ * format `generateId()` produces. Use this as a guard before interpolating any
+ * record id into an HTML string or `onclick="..."` handler.
+ */
+export function safeId(id) {
+  return typeof id === 'string' && /^[a-z0-9]{15}$/.test(id);
+}
+
 /** Two-letter initials from a display name */
 export function initials(name) {
   return name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?';
@@ -97,14 +122,25 @@ export function effortBadge(e) {
  * Expects already-escaped input.
  */
 function inlineMd(html) {
+  // Links must be substituted FIRST: otherwise the @mention regex below would
+  // eat the "@" inside mailto: URLs and the URL regex would then mangle the
+  // resulting tags. We splice link tags out, run the other rules, then splice
+  // them back in.
+  const linkPlaceholders = [];
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
+    const placeholder = `\x00LINK${linkPlaceholders.length}\x00`;
+    linkPlaceholders.push(`<a class="md-link" href="${safeUrl(url)}" target="_blank" rel="noopener noreferrer">${label}</a>`);
+    return placeholder;
+  });
   html = html.replace(/@(\w+(?:\s\w+)?)/g, '<span class="mention-chip">@$1</span>');
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
-  html = html.replace(/~~(.+?)~~/g, '<s>$1</s>');
-  html = html.replace(/(?<!\w)\*([^*\n]+)\*(?!\w)/g, '<em>$1</em>');
-  html = html.replace(/(?<!\w)_([^_\n]+)_(?!\w)/g, '<em>$1</em>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="md-bold">$1</strong>');
+  html = html.replace(/__(.+?)__/g, '<strong class="md-bold">$1</strong>');
+  html = html.replace(/~~(.+?)~~/g, '<s class="md-strike">$1</s>');
+  html = html.replace(/(?<!\w)\*([^*\n]+)\*(?!\w)/g, '<em class="md-italic">$1</em>');
+  html = html.replace(/(?<!\w)_([^_\n]+)_(?!\w)/g, '<em class="md-italic">$1</em>');
   html = html.replace(/`([^`]+)`/g, '<code class="md-code">$1</code>');
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a class="md-link" href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  // eslint-disable-next-line no-control-regex -- intentional NUL-byte placeholder so the substitution can't collide with user content
+  html = html.replace(/\x00LINK(\d+)\x00/g, (_m, i) => linkPlaceholders[Number(i)]);
   return html;
 }
 

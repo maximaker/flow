@@ -1,4 +1,11 @@
 import { pb } from '../../pb.js'
+import { safeId } from '../../utils.js'
+
+// Cached copy of the last-synced PocketBase state. Stored at module scope so
+// it doesn't enter Pinia's reactive system — every realtime tick rewrites it
+// (5 stringified collections), and reactivity has no consumers. The store is
+// a singleton so a single module variable is fine.
+let _pbSnapshot = {};
 
 export const syncActions = {
   // ===== PERSISTENCE =====
@@ -23,9 +30,13 @@ export const syncActions = {
         fetchAll('notifications', { sort: '-timestamp' }),
         fetchAll('labels',        { sort: 'name' }),
       ]);
-      this.users = users.map(r => ({ id: r.id, name: r.name, email: r.email, role: r.role || 'user', color: r.color || '#7a7a7a' }));
-      this.projects = projects.map(r => ({ id: r.id, name: r.name, color: r.color, description: r.description }));
-      this.tasks = tasks.map(r => ({
+      // Drop any record whose id doesn't match the strict PB format. We
+      // interpolate ids into onclick="app.x('${id}')" strings on every render,
+      // so a malformed id is a stored-XSS vector.
+      const validIds = arr => arr.filter(r => safeId(r.id));
+      this.users = validIds(users).map(r => ({ id: r.id, name: r.name, email: r.email, role: r.role || 'user', color: r.color || '#7a7a7a' }));
+      this.projects = validIds(projects).map(r => ({ id: r.id, name: r.name, color: r.color, description: r.description, icon: r.icon || '', managerId: r.managerId || '' }));
+      this.tasks = validIds(tasks).map(r => ({
         id: r.id, title: r.title, description: r.description || '', status: r.status || 'todo',
         projectId: r.projectId || '', assigneeId: r.assigneeId || '', dueDate: r.dueDate || '',
         priority: r.priority || '', labelIds: r.labelIds || [],
@@ -35,10 +46,10 @@ export const syncActions = {
         comments: r.comments || [], activityLog: r.activityLog || [],
         createdAt: r.createdAt || r.created?.split(' ')[0] || '',
       }));
-      this.notifications = notifications.map(r => ({ id: r.id, type: r.type, text: r.text, taskId: r.taskId, read: r.read, timestamp: r.timestamp }));
-      this.labels = labels.map(r => ({ id: r.id, name: r.name, color: r.color }));
+      this.notifications = validIds(notifications).map(r => ({ id: r.id, type: r.type, text: r.text, taskId: r.taskId, read: r.read, timestamp: r.timestamp }));
+      this.labels = validIds(labels).map(r => ({ id: r.id, name: r.name, color: r.color }));
       this.theme = localStorage.getItem('fb_theme') || 'light';
-      this._pbSnapshot = this._snapshot();
+      _pbSnapshot = this._snapshot();
       try {
         const settings = await pb.collection('settings').getOne('global');
         if (settings.boardColumns) this._pbBoardColumns = JSON.parse(settings.boardColumns);
@@ -55,11 +66,15 @@ export const syncActions = {
         this.labels = JSON.parse(localStorage.getItem('fb_labels') || '[]');
         this.theme = localStorage.getItem('fb_theme') || 'light';
       } catch { this.users = []; this.projects = []; this.tasks = []; this.notifications = []; this.labels = []; }
-      this._pbSnapshot = this._snapshot();
+      _pbSnapshot = this._snapshot();
     }
   },
 
   migrateOldSubtasks() {
+    // One-shot: mark migration done in localStorage so subsequent logins skip
+    // a full O(n) tasks scan. The flag is per-browser, which is fine — the
+    // migration is idempotent and the server-side data is the same regardless.
+    if (localStorage.getItem('fb_subtasks_migrated') === '1') return;
     const newTasks = [];
     this.tasks.forEach(t => {
       if (t.parentId === undefined) t.parentId = '';
@@ -79,6 +94,7 @@ export const syncActions = {
       }
     });
     if (newTasks.length > 0) { this.tasks.push(...newTasks); this.save(); }
+    try { localStorage.setItem('fb_subtasks_migrated', '1'); } catch {}
   },
 
   _lsSet(key, value) {
@@ -166,9 +182,9 @@ export const syncActions = {
     this._setSyncStatus('syncing');
     let hadError = false;
     try {
-      const snap = this._pbSnapshot || {};
+      const snap = _pbSnapshot || {};
       const collections = [
-        { name: 'projects', data: this.projects, toRecord: r => ({ name: r.name, color: r.color, description: r.description }) },
+        { name: 'projects', data: this.projects, toRecord: r => ({ name: r.name, color: r.color, description: r.description, icon: r.icon || '', managerId: r.managerId || '' }) },
         { name: 'labels',   data: this.labels,   toRecord: r => ({ name: r.name, color: r.color }) },
         {
           name: 'tasks', data: this.tasks,
@@ -226,7 +242,7 @@ export const syncActions = {
           }
         }
       }
-      this._pbSnapshot = this._snapshot();
+      _pbSnapshot = this._snapshot();
       this._pbSyncBackoff = 800; // reset backoff on success
       this._setSyncStatus(hadError ? 'error' : 'idle', hadError ? 'Some changes failed to sync' : null);
     } catch (e) {
@@ -256,7 +272,7 @@ export const syncActions = {
   async _subscribeToRealtime() {
     const collections = [
       { name: 'users',         store: 'users',         map: r => ({ id: r.id, name: r.name, email: r.email, role: r.role || 'user', color: r.color || '#7a7a7a' }) },
-      { name: 'projects',      store: 'projects',      map: r => ({ id: r.id, name: r.name, color: r.color, description: r.description }) },
+      { name: 'projects',      store: 'projects',      map: r => ({ id: r.id, name: r.name, color: r.color, description: r.description, icon: r.icon || '', managerId: r.managerId || '' }) },
       {
         name: 'tasks', store: 'tasks',
         map: r => ({
@@ -277,6 +293,12 @@ export const syncActions = {
       try {
         const unsub = await pb.collection(col.name).subscribe('*', (e) => {
           if (this._syncing) return;
+          // Reject records with malformed ids — anything we'd later interpolate
+          // into onclick="app.x('${id}')" must match the PB id format strictly.
+          if (!safeId(e.record?.id)) {
+            console.warn(`Rejected ${col.name} record with invalid id:`, e.record?.id);
+            return;
+          }
           const arr = this[col.store];
           const mapped = col.map(e.record);
           if (e.action === 'create') {
@@ -288,7 +310,7 @@ export const syncActions = {
             const idx = arr.findIndex(x => x.id === e.record.id);
             if (idx !== -1) arr.splice(idx, 1);
           }
-          this._pbSnapshot = this._snapshot();
+          _pbSnapshot = this._snapshot();
           this._lsSet(`fb_${col.store}`, JSON.stringify(this[col.store]));
           this.render();
           this.updateFaviconBadge();
@@ -298,11 +320,16 @@ export const syncActions = {
         console.warn(`Real-time subscription failed for ${col.name}:`, e);
       }
     }
-    // If some subscriptions failed, retry once after 10s
+    // If some subscriptions failed, retry once after 10s.
+    // Guard the retry against concurrent logout: if appStarted has flipped
+    // false or the auth token was cleared in the meantime, do not re-subscribe
+    // — that would push records into a logged-out store and re-establish
+    // server traffic the user explicitly ended.
     if (this._pbSubs.length < collections.length && !this._realtimeRetried) {
       this._realtimeRetried = true;
       setTimeout(() => {
-        if (this.appStarted) this._subscribeToRealtime();
+        if (!this.appStarted || !pb.authStore.isValid) return;
+        this._subscribeToRealtime();
       }, 10_000);
     }
   },
@@ -318,12 +345,16 @@ export const syncActions = {
       try {
         const fresh = JSON.parse(e.newValue || '[]');
         const storeKey = e.key.replace('fb_', ''); // e.g. 'fb_tasks' → 'tasks'
-        if (Array.isArray(this[storeKey])) {
-          this[storeKey] = fresh;
-          this._pbSnapshot = this._snapshot();
-          this.render();
-          this.updateFaviconBadge();
-        }
+        if (!Array.isArray(this[storeKey])) return;
+        // Same-origin attacker (or buggy tab) could write garbage here. Only
+        // accept arrays of objects with a well-formed id; mirrors the guard
+        // applied at the PocketBase ingress in loadData / _subscribeToRealtime.
+        if (!Array.isArray(fresh)) return;
+        const filtered = fresh.filter(r => r && typeof r === 'object' && safeId(r.id));
+        this[storeKey] = filtered;
+        _pbSnapshot = this._snapshot();
+        this.render();
+        this.updateFaviconBadge();
       } catch {}
     });
   },

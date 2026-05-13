@@ -116,35 +116,14 @@ export const renderActions = {
     const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
     const overdue = this.tasks.filter(t => t.dueDate && new Date(t.dueDate + 'T00:00:00') < todayMidnight && t.status !== 'done').length;
     document.getElementById('home-stats').innerHTML = `
-      <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Total Tasks</div></div>
-      <div class="stat-card"><div class="stat-value">${inProg}</div><div class="stat-label">In Progress</div></div>
-      <div class="stat-card"><div class="stat-value">${done}</div><div class="stat-label">Completed</div></div>
-      <div class="stat-card"><div class="stat-value">${overdue}</div><div class="stat-label">Overdue</div></div>`;
+      <span class="home-stat"><span class="home-stat-num">${total}</span> total</span>
+      <span class="home-stat"><span class="home-stat-num">${inProg}</span> in progress</span>
+      <span class="home-stat"><span class="home-stat-num">${done}</span> completed</span>
+      <span class="home-stat${overdue > 0 ? ' has-overdue' : ''}"><span class="home-stat-num">${overdue}</span> overdue</span>`;
 
-    const upcoming = this.tasks.filter(t => t.dueDate && t.status !== 'done').sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate)).slice(0,5);
-    document.getElementById('upcoming-deadlines').innerHTML = upcoming.length ? upcoming.map(t => {
-      const proj = this.projects.find(p => p.id === t.projectId);
-      return `<div class="upcoming-item" onclick="app.openTask('${t.id}')">
-        <span class="upcoming-dot" style="background:${proj?.color || '#94a3b8'}"></span>
-        <div class="upcoming-info"><p>${this.esc(t.title)}</p><small>${proj?.name || 'No project'}</small></div>
-        <span class="upcoming-date ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}">${this.formatDate(t.dueDate)}</span>
-      </div>`;
-    }).join('') : '<div class="empty-state-rich" style="padding:24px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14l2 2 4-4"/></svg><p>All caught up!</p><p class="empty-state-sub">No upcoming deadlines</p></div>';
-
-    const recentComments = [];
-    this.tasks.forEach(t => (t.comments||[]).forEach(c => { if (!c || !c.userId) return; const u = this.users.find(x => x.id === c.userId); recentComments.push({task:t,comment:c,user:u}); }));
-    recentComments.sort((a,b) => new Date(b.comment.timestamp) - new Date(a.comment.timestamp));
-    document.getElementById('recent-activity').innerHTML = recentComments.length ? recentComments.slice(0,5).map(r => `
-      <div class="activity-item"><div class="activity-dot"></div><div class="activity-text"><strong>${this.esc(r.user?.name||'Unknown')}</strong> commented on <strong>${this.esc(r.task.title)}</strong><span class="time">${this.timeAgo(r.comment.timestamp)}</span></div></div>
-    `).join('') : '<div class="empty-state"><p>No recent activity</p></div>';
-
-    const myTasks = this.tasks.filter(t => t.assigneeId === this.currentUserId && this.isRootTask(t)).slice(0,6);
-    document.getElementById('my-tasks-overview').innerHTML = myTasks.length ? myTasks.map(t => `
-      <div class="task-overview-item">
-        <div class="task-overview-check ${t.status==='done'?'done':''}" onclick="app.toggleTaskStatus('${t.id}')"></div>
-        <span class="task-overview-name ${t.status==='done'?'completed':''}">${this.esc(t.title)}</span>
-        ${this.priorityBadge(t.priority)}
-      </div>`).join('') : '<div class="empty-state"><p>No tasks assigned</p></div>';
+    // Upcoming Deadlines, Recent Activity, My Tasks Overview now render
+    // reactively via Vue components (HomeUpcomingDeadlines, HomeRecentActivity,
+    // HomeMyTasksOverview). No imperative DOM update needed here.
 
     // Recently Viewed section
     let recentContainer = document.getElementById('recent-viewed-card');
@@ -297,23 +276,23 @@ export const renderActions = {
               <span class="task-list-name ${colClass === 'col-done' ? 'completed' : ''}" ondblclick="event.stopPropagation();app.startInlineEdit(event,'${t.id}')">${this.esc(t.title)}</span>
             </div>
           </div>
+          ${hasMeta || t.effort ? `<div class="task-list-meta" style="--meta-indent:${indent + 86}px">
+            ${t.dueDate ? `<span class="task-list-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}">${this.formatDate(t.dueDate)}</span>` : ''}
+            ${isOverdue ? `<button class="rescue-btn" onclick="event.stopPropagation();app.rescueTask('${t.id}')" title="Move to today">Reschedule?</button>` : ''}
+            ${t.effort ? this.effortBadge(t.effort) : ''}
+            ${showPriority ? this.priorityBadge(t.priority) : ''}
+            ${showProject && proj ? `<span class="task-list-project" style="background:${this.safeColor(proj.color)}20;color:${this.safeColor(proj.color)}">${proj.icon ? `<span class="project-tag-icon" aria-hidden="true">${proj.icon}</span>` : ''}${this.esc(proj.name)}</span>` : ''}
+            ${blocked ? '<span class="blocked-indicator">Blocked</span>' : ''}
+            ${this.renderLabelTags(filteredLabelIds)}
+          </div>` : ''}
           <div class="task-list-right">
             ${si.total>0 ? `<span class="task-subtask-badge" title="${si.done} of ${si.total} subtasks completed">${si.done}/${si.total}</span>` : ''}
             ${ac>0 ? '<span class="task-attachment-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span>' : ''}
-            ${t.effort ? this.effortBadge(t.effort) : ''}
-            ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
+            ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : `<div class="task-avatar-sm unassigned" title="Unassigned">?</div>`}
             ${isFirstCol && !isDone ? `<button class="task-start-btn" title="Start this task" onclick="event.stopPropagation();app.startTask('${t.id}')">▶ Start</button>` : ''}
             ${!isDone ? `<span class="task-snooze-group"><button class="task-snooze-btn" title="Snooze to tomorrow" onclick="event.stopPropagation();app.snoozeTask('${t.id}','tomorrow')">→ Tomorrow</button><button class="task-snooze-btn" title="Snooze to next week" onclick="event.stopPropagation();app.snoozeTask('${t.id}','week')">→ Week</button></span>` : ''}
           </div>
         </div>
-        ${hasMeta ? `<div class="task-list-meta" style="padding-left:${indent + 20 + 16 + 18 + 24}px">
-            ${showPriority ? this.priorityBadge(t.priority) : ''}
-            ${showProject && proj ? `<span class="task-list-project" style="background:${this.safeColor(proj.color)}20;color:${this.safeColor(proj.color)}">${this.esc(proj.name)}</span>` : ''}
-            ${t.dueDate ? `<span class="task-list-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}">${this.formatDate(t.dueDate)}</span>` : ''}
-            ${isOverdue ? `<button class="rescue-btn" onclick="event.stopPropagation();app.rescueTask('${t.id}')" title="Move to today">Reschedule?</button>` : ''}
-            ${blocked ? '<span class="blocked-indicator">Blocked</span>' : ''}
-            ${this.renderLabelTags(filteredLabelIds)}
-          </div>` : ''}
       </div>`;
 
       // Render children if not collapsed
@@ -554,13 +533,13 @@ export const renderActions = {
           onclick="app.handleBoardCardClick(event,'${t.id}')">
           <div class="card-top">
             <span class="card-title ${t.status==='done'?'completed':''}">${this.esc(t.title)}</span>
-            ${proj ? `<span class="card-project-tag" style="background:${this.safeColor(proj.color)}15;color:${this.safeColor(proj.color)}">${this.esc(proj.name)}</span>` : ''}
+            ${proj ? `<span class="card-project-tag" style="background:${this.safeColor(proj.color)}15;color:${this.safeColor(proj.color)}">${proj.icon ? `<span class="project-tag-icon" aria-hidden="true">${proj.icon}</span>` : ''}${this.esc(proj.name)}</span>` : ''}
           </div>
           ${labelHtml}
           ${si.total>0 ? `<div class="card-subtask-bar"><div class="card-subtask-info"><span class="card-subtask-label">${si.done}/${si.total} subtasks</span><span class="card-subtask-label">${si.percent}%</span></div><div class="card-progress-track"><div class="card-progress-fill ${si.percent===100?'complete':''}" style="width:${si.percent}%"></div></div></div>` : ''}
           <div class="card-bottom">
             <div class="card-left">
-              ${assignee ? `<div class="card-avatar" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
+              ${assignee ? `<div class="card-avatar" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : `<div class="card-avatar unassigned" title="Unassigned">?</div>`}
               ${t.dueDate ? `<span class="card-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${this.formatDateShort(t.dueDate)}</span>` : ''}
               ${this.priorityBadge(t.priority)}
               ${this.effortBadge(t.effort)}
@@ -658,7 +637,7 @@ export const renderActions = {
 
     tasks.forEach(t => {
       const proj = this.projects.find(p => p.id === t.projectId);
-      const color = proj?.color || '#94a3b8';
+      const color = this.safeColor(proj?.color, '#94a3b8');
       const ts = t.createdAt ? new Date(t.createdAt) : new Date(t.dueDate);
       const te = new Date(t.dueDate); ts.setHours(0,0,0,0); te.setHours(0,0,0,0);
       const cw = 40;
@@ -921,60 +900,26 @@ export const renderActions = {
   },
 
   renderSettingsAppearance() {
-    const el = document.getElementById('settings-appearance-content');
-    if (!el) return;
-    el.innerHTML = `
-      <div class="settings-row">
-        <div>
-          <div class="settings-row-label">Dark mode</div>
-          <div class="settings-row-desc">Switch between light and dark theme</div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" ${this.theme === 'dark' ? 'checked' : ''} onchange="app.toggleTheme()">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>`;
+    // Rendered by SettingsAppearance.vue (reactive on store.theme).
   },
 
   // ===== WORKLOAD =====
   renderWorkload() {
-    if (!this.users.length) {
-      document.getElementById('workload-chart').innerHTML = `<div class="empty-state-rich"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><p>No team members</p><p class="empty-state-sub">Assign tasks to team members to see workload</p></div>`;
-      return;
-    }
-    document.getElementById('workload-chart').innerHTML = this.users.map(u => {
-      const tasks = this.tasks.filter(t => t.assigneeId === u.id);
-      const todo = tasks.filter(t => t.status === 'todo').length;
-      const prog = tasks.filter(t => t.status === 'in-progress').length;
-      const done = tasks.filter(t => t.status === 'done').length;
-      const max = Math.max(todo + prog + done, 1);
-
-      return `<div class="workload-row">
-        <div class="workload-user"><div class="team-avatar" style="background:${this.safeColor(u.color)}">${this.initials(u.name)}</div><span class="workload-user-name">${this.esc(u.name)}</span></div>
-        <div class="workload-bars">
-          <div class="workload-bar-row"><span class="workload-bar-label">To Do</span><div class="workload-bar-track"><div class="workload-bar-fill" style="width:${(todo/max)*100}%;background:var(--todo)"></div></div><span class="workload-bar-count">${todo}</span></div>
-          <div class="workload-bar-row"><span class="workload-bar-label">In Progress</span><div class="workload-bar-track"><div class="workload-bar-fill" style="width:${(prog/max)*100}%;background:var(--progress)"></div></div><span class="workload-bar-count">${prog}</span></div>
-          <div class="workload-bar-row"><span class="workload-bar-label">Done</span><div class="workload-bar-track"><div class="workload-bar-fill" style="width:${(done/max)*100}%;background:var(--done)"></div></div><span class="workload-bar-count">${done}</span></div>
-        </div>
-      </div>`;
-    }).join('');
+    // Workload rendered by WorkloadChart.vue — reactive on store.users / tasks,
+    // no imperative DOM update needed here. Kept as a stub so legacy callers
+    // in the render() orchestrator stay valid.
   },
 
   // ===== NOTIFICATIONS =====
-  renderNotifications() {
-    const badge = document.getElementById('notification-badge');
-    const unread = this.notifications.filter(n => !n.read).length;
-    if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'flex' : 'none'; }
-    const icons = { deadline: '<div class="notif-icon deadline">&#9200;</div>', assign: '<div class="notif-icon assign">&#128100;</div>', comment: '<div class="notif-icon comment">&#128172;</div>' };
-    document.getElementById('notification-list').innerHTML = this.notifications.length ? this.notifications.map(n => `
-      <div class="notif-item ${n.read?'':'unread'}" onclick="app.readNotification('${n.id}')">
-        ${icons[n.type]||icons.assign}<div class="notif-text"><p>${this.esc(n.text)}</p><div class="notif-time">${this.timeAgo(n.timestamp)}</div></div>
-      </div>`).join('') : '<div class="empty-state" style="padding:30px"><p>No notifications</p></div>';
-  },
+  // Notifications list + badge are rendered by NotificationsList.vue and the
+  // unreadCount computed in AppShell.vue. This shim exists so legacy callsites
+  // can still invoke renderNotifications() without any DOM side effect — Vue
+  // reactivity handles the actual update when notifications mutate.
+  renderNotifications() { /* no-op: handled by NotificationsList.vue */ },
 
-  readNotification(id) { const n = this.notifications.find(x => x.id === id); if (n) { n.read = true; this.save(); this.renderNotifications(); this.updateFaviconBadge(); if (n.taskId) this.openTask(n.taskId); } },
-  clearNotifications() { this.notifications = []; this.save(); this.renderNotifications(); this.updateFaviconBadge(); },
-  addNotification(type, text, taskId) { this.notifications.unshift({ id: this.generateId(), type, text, taskId, read: false, timestamp: new Date().toISOString() }); this.save(); this.renderNotifications(); },
+  readNotification(id) { const n = this.notifications.find(x => x.id === id); if (n) { n.read = true; this.save(); this.updateFaviconBadge(); if (n.taskId) this.openTask(n.taskId); } },
+  clearNotifications() { this.notifications = []; this.save(); this.updateFaviconBadge(); },
+  addNotification(type, text, taskId) { this.notifications.unshift({ id: this.generateId(), type, text, taskId, read: false, timestamp: new Date().toISOString() }); this.save(); },
   checkDeadlineNotifications() {
     if (!this.notifPrefs.deadlines) return;
     const tmr = new Date(); tmr.setDate(tmr.getDate()+1); const tmrStr = tmr.toISOString().split('T')[0];
@@ -1008,10 +953,10 @@ export const renderActions = {
     const html = entries.map(e => {
       if (e.type === 'comment') {
         return `<div class="timeline-entry timeline-comment">
-          <div class="timeline-avatar" style="background:${e.user?.color||'var(--text-light)'}">${e.user ? this.initials(e.user.name) : '?'}</div>
+          <div class="timeline-avatar" style="background:${this.safeColor(e.user?.color, 'var(--text-light)')}">${e.user ? this.initials(e.user.name) : '?'}</div>
           <div class="timeline-body">
             <div class="timeline-header"><strong>${e.user ? this.esc(e.user.name) : 'Unknown'}</strong><span class="timeline-time">${this.timeAgo(e.timestamp)}</span></div>
-            <div class="timeline-text">${this.renderMarkdown(this.esc(e.text))}</div>
+            <div class="timeline-text">${this.renderMarkdown(e.text)}</div>
           </div>
         </div>`;
       } else {
@@ -1035,8 +980,18 @@ export const renderActions = {
   renderProjectView() {
     const proj = this.projects.find(p => p.id === this.selectedProjectId);
     if (!proj) return;
-    document.getElementById('project-view-title').textContent = proj.name;
-    document.getElementById('page-title').textContent = proj.name;
+    // Page title and project-view heading both get the icon prefix if set,
+    // matching Notion's "[emoji] [name]" page-header pattern. The desktop
+    // topbar #page-title was removed (the breadcrumb carries that context
+    // and the in-content h2 is the prominent heading); guard the write so
+    // legacy callers don't crash. Mobile keeps its own #mobile-page-title.
+    const labelHTML = `${proj.icon ? `<span class="page-title-icon" aria-hidden="true">${proj.icon}</span>` : ''}${this.esc(proj.name)}`;
+    const viewTitleEl = document.getElementById('project-view-title');
+    if (viewTitleEl) viewTitleEl.innerHTML = labelHTML;
+    const pageTitleEl = document.getElementById('page-title');
+    if (pageTitleEl) pageTitleEl.innerHTML = labelHTML;
+    const mobileTitleEl = document.getElementById('mobile-page-title');
+    if (mobileTitleEl) mobileTitleEl.textContent = proj.name;
 
     const container = document.getElementById('project-view-content');
 
@@ -1067,7 +1022,7 @@ export const renderActions = {
             ${si.total>0 ? `<div class="card-subtask-bar"><div class="card-subtask-info"><span class="card-subtask-label">${si.done}/${si.total} subtasks</span><span class="card-subtask-label">${si.percent}%</span></div><div class="card-progress-track"><div class="card-progress-fill ${si.percent===100?'complete':''}" style="width:${si.percent}%"></div></div></div>` : ''}
             <div class="card-bottom">
               <div class="card-left">
-                ${assignee ? `<div class="card-avatar" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
+                ${assignee ? `<div class="card-avatar" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : `<div class="card-avatar unassigned" title="Unassigned">?</div>`}
                 ${t.dueDate ? `<span class="card-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${this.formatDateShort(t.dueDate)}</span>` : ''}
                 ${this.priorityBadge(t.priority)}
                 ${this.effortBadge(t.effort)}
@@ -1112,7 +1067,7 @@ export const renderActions = {
         return `<div class="timeline-row" onclick="app.openTask('${t.id}')" style="cursor:pointer">
           <div class="timeline-task-info">
             <span class="timeline-task-name ${t.status==='done'?'completed':''}">${this.esc(t.title)}</span>
-            ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}">${this.initials(assignee.name)}</div>` : ''}
+            ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : `<div class="task-avatar-sm unassigned" title="Unassigned">?</div>`}
           </div>
           <div class="timeline-bar-area">
             <span class="task-list-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}">${this.formatDate(t.dueDate)}</span>
@@ -1161,20 +1116,20 @@ export const renderActions = {
             </div>
             <div class="task-list-info"><span class="task-list-name ${t.status==='done'?'completed':''}">${this.esc(t.title)}</span></div>
           </div>
-          <div class="task-list-right">
-            ${si.total>0 ? `<span class="task-subtask-badge" title="${si.done} of ${si.total} subtasks completed">${si.done}/${si.total}</span>` : ''}
-            ${ac>0 ? '<span class="task-attachment-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span>' : ''}
-            ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : ''}
-          </div>
-        </div>
-        ${hasMeta ? `<div class="task-list-meta" style="padding-left:${indent + 20 + 16 + 18 + 24}px">
-            ${showPriority ? this.priorityBadge(t.priority) : ''}
-            ${showProject && proj2 ? `<span class="task-list-project" style="background:${this.safeColor(proj2.color)}20;color:${this.safeColor(proj2.color)}">${this.esc(proj2.name)}</span>` : ''}
+          ${hasMeta ? `<div class="task-list-meta" style="--meta-indent:${indent + 86}px">
             ${t.dueDate ? `<span class="task-list-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}">${this.formatDate(t.dueDate)}</span>` : ''}
             ${t.dueDate && this.dueDateClass(t.dueDate) === 'overdue' && t.status !== 'done' ? `<button class="rescue-btn" onclick="event.stopPropagation();app.rescueTask('${t.id}')" title="Reschedule to today">\u2192 Today</button>` : ''}
             ${showEffort ? this.effortBadge(t.effort) : ''}
+            ${showPriority ? this.priorityBadge(t.priority) : ''}
+            ${showProject && proj2 ? `<span class="task-list-project" style="background:${this.safeColor(proj2.color)}20;color:${this.safeColor(proj2.color)}">${proj2.icon ? `<span class="project-tag-icon" aria-hidden="true">${proj2.icon}</span>` : ''}${this.esc(proj2.name)}</span>` : ''}
             ${this.renderLabelTags(filteredLabelIds)}
           </div>` : ''}
+          <div class="task-list-right">
+            ${si.total>0 ? `<span class="task-subtask-badge" title="${si.done} of ${si.total} subtasks completed">${si.done}/${si.total}</span>` : ''}
+            ${ac>0 ? '<span class="task-attachment-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span>' : ''}
+            ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : `<div class="task-avatar-sm unassigned" title="Unassigned">?</div>`}
+          </div>
+        </div>
       </div>`;
 
       if (hasChildren && !isCollapsed) {
@@ -1264,54 +1219,20 @@ export const renderActions = {
   },
 
   // ===== NAV BADGES =====
+  // Counts (My Tasks, Board, mobile bottom-nav) are reactive computed props
+  // in AppShell.vue now. This method just keeps the bottom-nav active-class
+  // sync until that nav is converted to a Vue component too.
   renderNavBadges() {
-    const openCount = this.tasks.filter(t => t.status !== 'done' && this.isRootTask(t)).length;
-    const inProgCount = this.tasks.filter(t => t.status === 'in-progress' && this.isRootTask(t)).length;
-    // Sidebar badges
-    const taskBadge = document.getElementById('nav-badge-tasks');
-    const boardBadge = document.getElementById('nav-badge-board');
-    if (taskBadge) { taskBadge.textContent = openCount; taskBadge.classList.toggle('visible', openCount > 0); }
-    if (boardBadge) { boardBadge.textContent = inProgCount; boardBadge.classList.toggle('visible', inProgCount > 0); }
-    // Bottom nav badge (mobile)
-    const btmBadge = document.getElementById('bottom-badge-tasks');
-    if (btmBadge) { btmBadge.textContent = openCount; btmBadge.classList.toggle('visible', openCount > 0); }
-    // Also sync bottom-nav active item with current view
     document.querySelectorAll('.bottom-nav-item[data-view]').forEach(el => {
       el.classList.toggle('active', el.dataset.view === this.currentView);
     });
   },
 
   // ===== BREADCRUMB =====
-  renderBreadcrumb() {
-    const bc = document.getElementById('breadcrumb');
-    if (!bc) return;
-    let html = '';
-    const titles = { home: 'Home', 'my-tasks': 'My Tasks', board: 'Board', timeline: 'Timeline', analytics: 'Analytics', workload: 'Workload', project: 'Project' };
-    let projName = '';
-    if (this.currentView === 'project') {
-      const p = this.projects.find(x => x.id === this.selectedProjectId);
-      if (p) projName = p.name;
-    } else if (this.currentView === 'my-tasks') {
-      const fProj = document.getElementById('filter-project')?.value;
-      if (fProj) { const p = this.projects.find(x => x.id === fProj); if (p) projName = p.name; }
-    } else if (this.currentView === 'board') {
-      const fProj = document.getElementById('board-project-select')?.value;
-      if (fProj) { const p = this.projects.find(x => x.id === fProj); if (p) projName = p.name; }
-    }
-    if (projName) {
-      html = `<a onclick="app.switchView('${this.currentView}')">${titles[this.currentView]}</a><span class="breadcrumb-sep">\u203A</span><span>${this.esc(projName)}</span>`;
-    }
-    if (this.currentTaskId) {
-      const task = this.tasks.find(t => t.id === this.currentTaskId);
-      if (task && task.parentId) {
-        const parent = this.tasks.find(t => t.id === task.parentId);
-        if (parent) {
-          html = `<span>Task</span><span class="breadcrumb-sep">\u203A</span><a onclick="app.openTask('${parent.id}')">${this.esc(parent.title)}</a><span class="breadcrumb-sep">\u203A</span><span>${this.esc(task.title)}</span>`;
-        }
-      }
-    }
-    bc.innerHTML = html;
-  },
+  // Breadcrumb rendering moved to src/components/Breadcrumb.vue \u2014 a Vue
+  // computed-prop-driven SFC reading directly from the store. This replaces
+  // the previous innerHTML+inline-onclick approach with @click bindings,
+  // which is the pattern the rest of the renderer should migrate toward.
 
   // ===== TIMELINE DRAG =====
   initTimelineDrag(barEl, taskId) {

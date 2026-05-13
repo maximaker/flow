@@ -78,13 +78,17 @@ function retryInit() {
 onMounted(() => {
   runInit()
 
-  // Global unhandled promise rejection guard — surfaces silent async failures
+  // User-facing toast for unhandled rejections. The errorReporter (installed
+  // in main.js) already captures the same events for monitoring — this
+  // handler exists purely to surface them to the user, with a noise filter
+  // for benign browser/SDK chatter.
   window.addEventListener('unhandledrejection', (event) => {
-    const msg = event.reason?.message || String(event.reason) || 'Unknown async error'
-    // Ignore benign browser/extension noise
-    if (/ResizeObserver|cancelled|abort/i.test(msg)) return
-    console.error('[Flow] Unhandled promise rejection:', event.reason)
-    // If app is running, show a toast so the user knows something went wrong
+    const reason = event.reason
+    const name = reason?.name
+    const msg  = reason?.message || String(reason) || ''
+    if (name === 'AbortError') return
+    if (/ResizeObserver loop/i.test(msg)) return
+    if (/^Request was autocancelled$/i.test(msg)) return
     if (store.appStarted && typeof store.toast === 'function') {
       store.toast('Something went wrong. If the problem persists, try refreshing the page.', 'error')
     }

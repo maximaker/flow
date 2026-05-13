@@ -40,8 +40,35 @@ export const userActions = {
       if (this.currentView === 'settings') this.renderSettingsUsers();
       this.toast('Member updated', 'success');
     } else {
-      // Generate a random temporary password for the new PocketBase user
-      const tempPass = Math.random().toString(36).slice(-6) + Math.random().toString(36).slice(-6).toUpperCase() + '1!';
+      // Generate a cryptographically random temporary password. Math.random
+      // is predictable enough that an attacker who knows the moment of
+      // creation could brute-force the password before the admin shares it.
+      const tempPass = (() => {
+        const ALPHA_LO = 'abcdefghijkmnopqrstuvwxyz';
+        const ALPHA_HI = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        const DIGITS   = '23456789';
+        const SPECIAL  = '!@#$%&*';
+        const POOL     = ALPHA_LO + ALPHA_HI + DIGITS + SPECIAL;
+        const buf      = new Uint32Array(14);
+        crypto.getRandomValues(buf);
+        // Guarantee at least one of each class so PB's password rules accept it.
+        const required = [
+          ALPHA_LO[buf[0] % ALPHA_LO.length],
+          ALPHA_HI[buf[1] % ALPHA_HI.length],
+          DIGITS[buf[2] % DIGITS.length],
+          SPECIAL[buf[3] % SPECIAL.length],
+        ];
+        const filler = Array.from({ length: 10 }, (_, i) => POOL[buf[i + 4] % POOL.length]);
+        // Fisher-Yates shuffle so the required chars aren't always at the start.
+        const out = [...required, ...filler];
+        const shuf = new Uint32Array(out.length);
+        crypto.getRandomValues(shuf);
+        for (let i = out.length - 1; i > 0; i--) {
+          const j = shuf[i] % (i + 1);
+          [out[i], out[j]] = [out[j], out[i]];
+        }
+        return out.join('');
+      })();
       try {
         const record = await pb.collection('users').create({ name, email, role, color, password: tempPass, passwordConfirm: tempPass });
         this.users.push({ id: record.id, name, email, role, color });
