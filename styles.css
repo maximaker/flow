@@ -3903,3 +3903,125 @@ input:focus, select:focus, textarea:focus { outline: none; }
   }
 }
 
+
+/* ===== Task Palette (New / Edit task modal) =====
+ * Visually a sibling of the command palette — same 560px width, 15vh pinning,
+ * lean input row, hairline-divided property rail. The chrome stays quiet so
+ * the focus is on typing the task title, with properties as a property list
+ * underneath. */
+.task-palette-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 200;
+  display: none; align-items: flex-start; justify-content: center;
+  padding-top: 15vh;
+}
+.task-palette-overlay.show { display: flex; }
+
+.task-palette {
+  width: 560px; max-width: calc(100vw - 32px);
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  max-height: calc(100vh - 30vh);
+}
+
+/* Top input row — mirrors .cmd-input-wrap from the command palette. */
+.task-palette-input-wrap {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-light);
+}
+.task-palette-input-icon { color: var(--text-light); flex-shrink: 0; }
+.task-palette-input-wrap input {
+  border: none; background: none; flex: 1;
+  font-size: 15px; color: var(--text); font-family: inherit;
+  letter-spacing: -0.005em;
+  min-width: 0;
+}
+.task-palette-input-wrap input:focus { outline: none; }
+.task-palette-input-wrap input::placeholder { color: var(--text-light); }
+.task-palette-template {
+  font-size: 11px; padding: 4px 8px;
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text-secondary);
+  font-family: inherit; cursor: pointer;
+  flex-shrink: 0; max-width: 140px;
+}
+.task-palette-template:hover { background: var(--bg-sidebar-hover); }
+
+/* Property rail — matches task panel's vertical property list pattern. */
+.task-palette-props {
+  padding: 10px 8px;
+  display: flex; flex-direction: column; gap: 2px;
+  overflow-y: auto;
+  flex: 1;
+}
+.task-palette-prop {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: background-color var(--transition);
+}
+.task-palette-prop:hover { background: var(--bg-hover); }
+.task-palette-prop > label {
+  width: 96px; flex-shrink: 0;
+  font-size: 13px; color: var(--text-light); font-weight: 400;
+}
+.task-palette-prop select,
+.task-palette-prop input[type="date"],
+.task-palette-prop textarea {
+  flex: 1; padding: 4px 6px;
+  border: 1px solid transparent; border-radius: 4px;
+  font-size: 14px; background: transparent; color: var(--text);
+  font-family: inherit; min-width: 0;
+  transition: background-color var(--transition), border-color var(--transition);
+}
+.task-palette-prop select:hover,
+.task-palette-prop input[type="date"]:hover,
+.task-palette-prop textarea:hover { background: var(--bg-hover); }
+.task-palette-prop select:focus,
+.task-palette-prop input[type="date"]:focus,
+.task-palette-prop textarea:focus { background: var(--bg-white); border-color: var(--border); outline: none; }
+.task-palette-prop textarea { resize: vertical; min-height: 32px; }
+.task-palette-prop-desc { align-items: flex-start; }
+.task-palette-prop-desc > label { padding-top: 6px; }
+
+/* Due-date row: quick-pick chips above a date input. */
+.task-palette-due { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.task-palette-quickpicks { display: flex; gap: 4px; flex-wrap: wrap; }
+.task-palette-quickpicks button {
+  font-size: 11px; padding: 2px 8px; border-radius: 12px;
+  background: var(--bg-secondary); color: var(--text-secondary);
+  border: 1px solid var(--border-light); cursor: pointer;
+  transition: background-color var(--transition), color var(--transition);
+  font-family: inherit;
+}
+.task-palette-quickpicks button:hover { background: var(--bg-sidebar-hover); color: var(--text); }
+
+/* Footer: keyboard hint pills (left) + actions (right) — palette signature. */
+.task-palette-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg);
+  gap: 12px;
+}
+.task-palette-hints {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 11px; color: var(--text-light);
+}
+.task-palette-hints kbd {
+  font-size: 10px; padding: 1px 5px;
+  background: var(--bg-secondary); border: 1px solid var(--border-light);
+  border-radius: 3px; margin-right: 4px;
+  font-family: inherit;
+}
+.task-palette-actions {
+  display: flex; gap: 8px; align-items: center;
+}
+@media (max-width: 600px) {
+  .task-palette-hints { display: none; }
+  .task-palette-footer { justify-content: flex-end; }
+}

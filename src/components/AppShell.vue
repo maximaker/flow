@@ -826,94 +826,98 @@
       </div>
     </div>
 
-    <!-- Task Create/Edit Modal -->
-    <div class="modal-overlay" id="task-modal-overlay">
-      <div class="modal" id="task-modal">
-        <div class="modal-header">
-          <h3 id="task-modal-title">New Task</h3>
-          <div class="modal-header-right">
-            <select id="template-select" class="filter-select" onchange="app.applyTemplate(this.value)">
-              <option value="">Use Template...</option>
-            </select>
-            <button class="btn-icon" @click="store.closeTaskModal()">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-        </div>
-        <div class="modal-body">
-          <!-- Always-visible fields -->
-          <div class="form-group">
-            <input type="text" id="modal-task-name" placeholder="What needs to be done?" class="task-name-input">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Who's responsible?</label>
-              <select id="modal-task-assignee"></select>
-            </div>
-            <div class="form-group">
-              <label>Project</label>
-              <select id="modal-task-project"></select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Due Date</label>
-            <div class="date-quickpicks">
-              <button type="button" class="quickpick-btn" @click="store.setQuickDate('modal-task-due','today')">Today</button>
-              <button type="button" class="quickpick-btn" @click="store.setQuickDate('modal-task-due','tomorrow')">Tomorrow</button>
-              <button type="button" class="quickpick-btn" @click="store.setQuickDate('modal-task-due','nextweek')">Next week</button>
-              <button type="button" class="quickpick-btn" @click="store.setQuickDate('modal-task-due','none')">No date</button>
-            </div>
-            <input type="date" id="modal-task-due">
-          </div>
-
-          <!-- More options (collapsed by default) -->
-          <button type="button" class="more-options-toggle" id="more-options-toggle" @click="store.toggleMoreOptions()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" id="more-options-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-            More options
+    <!-- Task Create/Edit Modal — palette-style overlay matching command-palette
+         chrome: pinned 15vh from top, 560px wide, lean input row + property
+         rail + keyboard-hint footer (no heavy "New Task" title bar). -->
+    <div class="task-palette-overlay" id="task-modal-overlay" @click.self="store.closeTaskModal()">
+      <div class="task-palette" id="task-modal">
+        <!-- Input row: + icon, primary input, template selector, close -->
+        <div class="task-palette-input-wrap">
+          <svg class="task-palette-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <input type="text" id="modal-task-name" placeholder="What needs to be done?" autocomplete="off">
+          <select id="template-select" class="task-palette-template" onchange="app.applyTemplate(this.value)" aria-label="Apply template">
+            <option value="">Templates…</option>
+          </select>
+          <button class="btn-icon" @click="store.closeTaskModal()" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
-          <div class="more-options-body" id="more-options-body">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Status</label>
-                <select id="modal-task-status"></select>
+        </div>
+
+        <!-- Property rail: rows of label + value, matching task-panel's pattern -->
+        <div class="task-palette-props">
+          <div class="task-palette-prop">
+            <label>Project</label>
+            <select id="modal-task-project"></select>
+          </div>
+          <div class="task-palette-prop">
+            <label>Assignee</label>
+            <select id="modal-task-assignee"></select>
+          </div>
+          <div class="task-palette-prop">
+            <label>Due</label>
+            <div class="task-palette-due">
+              <div class="task-palette-quickpicks">
+                <button type="button" @click="store.setQuickDate('modal-task-due','today')">Today</button>
+                <button type="button" @click="store.setQuickDate('modal-task-due','tomorrow')">Tomorrow</button>
+                <button type="button" @click="store.setQuickDate('modal-task-due','nextweek')">Next week</button>
+                <button type="button" @click="store.setQuickDate('modal-task-due','none')">No date</button>
               </div>
-              <div class="form-group">
-                <label>Priority</label>
-                <select id="modal-task-priority">
-                  <option value="">None</option>
-                  <option value="p0">🔴 Urgent</option>
-                  <option value="p1">🟠 High</option>
-                  <option value="p2">🟡 Medium</option>
-                  <option value="p3">🔵 Low</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Effort estimate</label>
-                <select id="modal-task-effort">
-                  <option value="">Not sure yet</option>
-                  <option value="trivial">Quick (under 1h)</option>
-                  <option value="small">Short (1–2h)</option>
-                  <option value="medium">Half day</option>
-                  <option value="large">1–2 days</option>
-                  <option value="xl">3–5 days</option>
-                  <option value="epic">A week or more</option>
-                </select>
-              </div>
-              <div class="form-group"><label>Labels</label><div class="label-picker" id="modal-task-labels"></div></div>
-            </div>
-            <div class="form-group">
-              <label>Description</label>
-              <textarea id="modal-task-desc" placeholder="Add any notes or context..." rows="3"></textarea>
+              <input type="date" id="modal-task-due">
             </div>
           </div>
+          <div class="task-palette-prop">
+            <label>Priority</label>
+            <select id="modal-task-priority">
+              <option value="">None</option>
+              <option value="p0">🔴 Urgent</option>
+              <option value="p1">🟠 High</option>
+              <option value="p2">🟡 Medium</option>
+              <option value="p3">🔵 Low</option>
+            </select>
+          </div>
+          <div class="task-palette-prop">
+            <label>Status</label>
+            <select id="modal-task-status"></select>
+          </div>
+          <div class="task-palette-prop">
+            <label>Effort</label>
+            <select id="modal-task-effort">
+              <option value="">Not sure yet</option>
+              <option value="trivial">Quick (under 1h)</option>
+              <option value="small">Short (1–2h)</option>
+              <option value="medium">Half day</option>
+              <option value="large">1–2 days</option>
+              <option value="xl">3–5 days</option>
+              <option value="epic">A week or more</option>
+            </select>
+          </div>
+          <div class="task-palette-prop">
+            <label>Labels</label>
+            <div class="label-picker" id="modal-task-labels"></div>
+          </div>
+          <div class="task-palette-prop task-palette-prop-desc">
+            <label>Notes</label>
+            <textarea id="modal-task-desc" placeholder="Optional context, links, or notes…" rows="2"></textarea>
+          </div>
+          <!-- Hidden legacy more-options targets so old toggle code keeps no-op-ing -->
+          <div class="hidden">
+            <span id="more-options-toggle"></span>
+            <span id="more-options-chevron"></span>
+            <span id="more-options-body"></span>
+          </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn-text" @click="store.saveAsTemplate()" title="Save current fields as a template">Save as Template</button>
-          <div style="flex:1"></div>
-          <button class="btn-secondary" @click="store.closeTaskModal()">Cancel</button>
-          <button class="btn-primary" id="task-modal-save-btn" @click="store.saveTaskFromModal()">Create Task</button>
+
+        <!-- Footer: keyboard hints (palette pattern) + actions -->
+        <div class="task-palette-footer">
+          <div class="task-palette-hints">
+            <span><kbd>⏎</kbd> Create</span>
+            <span><kbd>Tab</kbd> Next field</span>
+            <span><kbd>Esc</kbd> Close</span>
+          </div>
+          <div class="task-palette-actions">
+            <button class="btn-text" @click="store.saveAsTemplate()" title="Save current fields as a template">Save as Template</button>
+            <button class="btn-primary btn-sm" id="task-modal-save-btn" @click="store.saveTaskFromModal()">Create Task</button>
+          </div>
         </div>
       </div>
     </div>

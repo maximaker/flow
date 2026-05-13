@@ -1,3 +1,12 @@
+// Built-in task templates. Module-scope so they survive Pinia's actions
+// merge — actions only keep function properties; data props are dropped.
+const BUILTIN_TEMPLATES = [
+  { name: 'Bug Report',        priority: 'p0', labelNames: ['Bug'],     subtasks: ['Reproduce', 'Fix', 'Test', 'Deploy'] },
+  { name: 'Feature Request',   priority: 'p2', labelNames: ['Feature'], subtasks: ['Design', 'Implement', 'Review', 'Test'] },
+  { name: 'Sprint Planning',   priority: '',   labelNames: [],          subtasks: ['Review backlog', 'Estimate', 'Assign', 'Set goals'] },
+  { name: 'Release Checklist', priority: '',   labelNames: [],          subtasks: ['Code freeze', 'QA', 'Staging deploy', 'Prod deploy', 'Monitor'] },
+];
+
 export const taskActions = {
   // ===== TASK MODAL HELPERS =====
   toggleMoreOptions() {
@@ -13,7 +22,8 @@ export const taskActions = {
   // ===== TASK CRUD =====
   showTaskModal(defaultStatus) {
     this.editingTaskId = null;
-    document.getElementById('task-modal-title').textContent = 'New Task';
+    // Palette redesign removed the title element; tolerate its absence.
+    document.getElementById('task-modal-title') && (document.getElementById('task-modal-title').textContent = 'New Task');
     document.getElementById('modal-task-name').value = '';
     document.getElementById('modal-task-assignee').value = '';
     document.getElementById('modal-task-project').value = '';
@@ -1196,12 +1206,6 @@ export const taskActions = {
   },
 
   // ===== TASK TEMPLATES =====
-  builtinTemplates: [
-    { name: 'Bug Report',        priority: 'p0', labelNames: ['Bug'],     subtasks: ['Reproduce', 'Fix', 'Test', 'Deploy'] },
-    { name: 'Feature Request',   priority: 'p2', labelNames: ['Feature'], subtasks: ['Design', 'Implement', 'Review', 'Test'] },
-    { name: 'Sprint Planning',   priority: '',   labelNames: [],           subtasks: ['Review backlog', 'Estimate', 'Assign', 'Set goals'] },
-    { name: 'Release Checklist', priority: '',   labelNames: [],           subtasks: ['Code freeze', 'QA', 'Staging deploy', 'Prod deploy', 'Monitor'] },
-  ],
 
   saveTemplates() {
     localStorage.setItem('fb_templates', JSON.stringify(this.templates));
@@ -1212,7 +1216,7 @@ export const taskActions = {
     const sel = document.getElementById('template-select');
     if (!sel) return;
     sel.innerHTML = '<option value="">Use Template...</option>';
-    this.builtinTemplates.forEach((t, i) => { sel.innerHTML += `<option value="builtin_${i}">${this.esc(t.name)}</option>`; });
+    BUILTIN_TEMPLATES.forEach((t, i) => { sel.innerHTML += `<option value="builtin_${i}">${this.esc(t.name)}</option>`; });
     if (this.templates.length) {
       sel.innerHTML += '<option disabled>── Custom ──</option>';
       this.templates.forEach((t, i) => { sel.innerHTML += `<option value="custom_${i}">${this.esc(t.name)}</option>`; });
@@ -1222,7 +1226,7 @@ export const taskActions = {
   applyTemplate(val) {
     if (!val) return;
     let tmpl = null;
-    if (val.startsWith('builtin_')) tmpl = this.builtinTemplates[parseInt(val.split('_')[1])];
+    if (val.startsWith('builtin_')) tmpl = BUILTIN_TEMPLATES[parseInt(val.split('_')[1])];
     else if (val.startsWith('custom_')) tmpl = this.templates[parseInt(val.split('_')[1])];
     if (!tmpl) return;
     const nameEl = document.getElementById('modal-task-name');

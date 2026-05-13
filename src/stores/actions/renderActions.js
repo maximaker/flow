@@ -1036,11 +1036,26 @@ export const renderActions = {
     const container = document.getElementById('project-view-content');
 
     if (this.projectViewMode === 'board') {
-      // Render board inline in the project view container
+      // Render board inline in the project view container. Wraps the kanban
+      // in the same `.board-header` toolbar the global Board uses (Columns
+      // manager + Add Task) so the two views look identical.
       const projTasks = this.tasks.filter(t => this.isRootTask(t) && t.projectId === this.selectedProjectId);
       const dotColors = { 'todo': 'var(--todo)', 'in-progress': 'var(--progress)', 'done': 'var(--done)' };
 
-      container.innerHTML = '<div class="kanban-board" id="project-kanban-board">' + this.boardColumns.map(col => {
+      const headerHtml = `<div class="board-header">
+          <div class="board-header-left">
+            <button type="button" class="btn-secondary" onclick="app.showColumnManager()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Columns
+            </button>
+          </div>
+          <button type="button" class="btn-primary" onclick="app.showTaskModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Task
+          </button>
+        </div>`;
+
+      container.innerHTML = headerHtml + '<div class="kanban-board" id="project-kanban-board">' + this.boardColumns.map(col => {
         const status = col.id;
         const tasks = projTasks.filter(t => t.status === status).sort((a,b) => (a.order||0) - (b.order||0));
         const dotColor = dotColors[status] || 'var(--text-light)';
