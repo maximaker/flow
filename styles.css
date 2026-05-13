@@ -4125,17 +4125,29 @@ input:focus, select:focus, textarea:focus { outline: none; }
  * Targets ≤480px specifically so the desktop dense list stays intact.
  * ============================================================ */
 @media (max-width: 480px) {
+  /* Restore plain block display so the title actually paints. The previous
+   * `-webkit-box` + `-webkit-line-clamp` collapsed to zero width inside the
+   * .task-list-info-wrap flex parent on some phones. Wrap freely instead. */
   #view-my-tasks .task-list-name {
     font-size: 15px !important;
     line-height: 1.35 !important;
     white-space: normal !important;
     overflow: visible !important;
     text-overflow: clip !important;
-    /* 2-line clamp keeps the row from runaway height on very long titles. */
-    display: -webkit-box !important;
-    -webkit-line-clamp: 2 !important;
-    -webkit-box-orient: vertical;
+    display: block !important;
+    overflow-wrap: anywhere;
     word-break: break-word;
+  }
+  /* Ensure the wrapping context lets the title take its width. */
+  #view-my-tasks .task-list-info-wrap {
+    flex: 1 1 auto !important;
+    min-width: 0;
+    max-width: 100%;
+  }
+  #view-my-tasks .task-list-info {
+    flex: 1 1 auto !important;
+    min-width: 0;
+    display: block !important;
   }
   #view-my-tasks .task-list-name.completed {
     font-size: 15px !important;
