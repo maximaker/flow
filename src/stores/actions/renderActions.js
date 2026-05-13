@@ -619,6 +619,18 @@ export const renderActions = {
   },
 
   // ===== TIMELINE =====
+  // Shift the timeline window by `days` (0 = jump back to today). Re-renders
+  // whichever timeline is currently visible — project-scoped or global.
+  shiftTimeline(days) {
+    if (days === 0) this.timelineOffset = 0;
+    else this.timelineOffset = (this.timelineOffset || 0) + days;
+    if (this.currentView === 'project' && this.projectViewMode === 'timeline') {
+      this.renderProject();
+    } else {
+      this.renderTimeline();
+    }
+  },
+
   renderTimeline() {
     const fProj = document.getElementById('timeline-project-select').value;
     let tasks = this.tasks.filter(t => t.dueDate && this.isRootTask(t));
@@ -627,8 +639,20 @@ export const renderActions = {
     const today = new Date(); today.setHours(0,0,0,0);
     const startDate = new Date(today); startDate.setDate(startDate.getDate() - 7 + this.timelineOffset);
     const days = 28;
+    const endDate = new Date(startDate); endDate.setDate(endDate.getDate() + days);
     const dates = [];
     for (let i = 0; i < days; i++) { const dd = new Date(startDate); dd.setDate(dd.getDate() + i); dates.push(dd); }
+
+    // Skip rows whose bars wouldn't overlap the visible window — they'd render
+    // as empty rows otherwise, which reads as broken. Bars span from createdAt
+    // (or dueDate if none) to dueDate, so a task is visible iff its span
+    // intersects [startDate, endDate).
+    tasks = tasks.filter(t => {
+      const ts = t.createdAt ? new Date(t.createdAt) : new Date(t.dueDate);
+      const te = new Date(t.dueDate);
+      ts.setHours(0,0,0,0); te.setHours(0,0,0,0);
+      return te >= startDate && ts < endDate;
+    });
 
     const isToday = d => d.toDateString() === today.toDateString();
     const isWeekend = d => d.getDay() === 0 || d.getDay() === 6;
@@ -1049,34 +1073,78 @@ export const renderActions = {
     }
 
     if (this.projectViewMode === 'timeline') {
-      // Render a simple timeline inline in the project view container
-      const projTasks = this.tasks.filter(t => this.isRootTask(t) && t.projectId === this.selectedProjectId && t.dueDate);
-      projTasks.sort((a,b) => a.dueDate.localeCompare(b.dueDate));
+      // Proper Gantt: header row of dates + one row per task with an absolute-
+      // positioned bar spanning the task's duration. Reuses the timeline-* CSS
+      // classes from the global Timeline view so styling stays in lockstep.
+      const proj = this.projects.find(p => p.id === this.selectedProjectId);
+      const projColor = this.safeColor(proj?.color, '#94a3b8');
+      const tasksAll = this.tasks.filter(t => this.isRootTask(t) && t.projectId === this.selectedProjectId && t.dueDate);
 
-      if (!projTasks.length) {
-        container.innerHTML = '<div class="empty-state-rich"><p>No tasks with due dates in this project</p></div>';
+      const today = new Date(); today.setHours(0,0,0,0);
+      const startDate = new Date(today); startDate.setDate(startDate.getDate() - 7 + (this.timelineOffset || 0));
+      const days = 28;
+      const endDate = new Date(startDate); endDate.setDate(endDate.getDate() + days);
+      const dates = [];
+      for (let i = 0; i < days; i++) { const dd = new Date(startDate); dd.setDate(dd.getDate() + i); dates.push(dd); }
+      const isToday = d => d.toDateString() === today.toDateString();
+      const isWeekend = d => d.getDay() === 0 || d.getDay() === 6;
+
+      // Only keep tasks whose span overlaps the visible window — empty rows
+      // otherwise.
+      const tasks = tasksAll.filter(t => {
+        const ts = t.createdAt ? new Date(t.createdAt) : new Date(t.dueDate);
+        const te = new Date(t.dueDate);
+        ts.setHours(0,0,0,0); te.setHours(0,0,0,0);
+        return te >= startDate && ts < endDate;
+      });
+
+      if (!tasksAll.length) {
+        container.innerHTML = `<div class="empty-state-rich">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <p>No tasks with due dates in this project</p>
+          <p class="empty-state-sub">Add tasks with due dates to see them on a timeline</p>
+        </div>`;
         return;
       }
 
-      const today = new Date(); today.setHours(0,0,0,0);
-      const rows = projTasks.map(t => {
-        const assignee = this.users.find(u => u.id === t.assigneeId);
-        const dueDate = new Date(t.dueDate + 'T00:00:00');
-        const diff = Math.round((dueDate - today) / 86400000);
-        const barColor = diff < 0 ? 'var(--overdue, #c0392b)' : diff < 2 ? 'var(--soon, #e67e22)' : 'var(--accent)';
-        return `<div class="timeline-row" onclick="app.openTask('${t.id}')" style="cursor:pointer">
-          <div class="timeline-task-info">
-            <span class="timeline-task-name ${t.status==='done'?'completed':''}">${this.esc(t.title)}</span>
-            ${assignee ? `<div class="task-avatar-sm" style="background:${this.safeColor(assignee.color)}" title="${this.esc(assignee.name)}">${this.initials(assignee.name)}</div>` : `<div class="task-avatar-sm unassigned" title="Unassigned">?</div>`}
-          </div>
-          <div class="timeline-bar-area">
-            <span class="task-list-due ${this.dueDateClass(t.dueDate)}" title="${this.formatDateAbsolute(t.dueDate)}">${this.formatDate(t.dueDate)}</span>
-            ${this.priorityBadge(t.priority)}
-          </div>
-        </div>`;
-      }).join('');
+      let html = `<div class="project-timeline-controls">
+        <button class="btn-icon" onclick="app.shiftTimeline(-7)" aria-label="Previous week"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+        <button class="btn-secondary btn-sm" onclick="app.shiftTimeline(0)">Today</button>
+        <button class="btn-icon" onclick="app.shiftTimeline(7)" aria-label="Next week"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>`;
 
-      container.innerHTML = `<div class="project-timeline">${rows}</div>`;
+      html += `<div class="timeline-container">`;
+      html += `<div class="timeline-header-row"><div class="timeline-label-col">Task</div><div class="timeline-days">${dates.map(dd => `<div class="timeline-day ${isToday(dd)?'today':''} ${isWeekend(dd)?'weekend':''}"><div>${dd.toLocaleDateString('en',{weekday:'short'})}</div><div>${dd.getDate()}</div></div>`).join('')}</div></div>`;
+
+      tasks.forEach(t => {
+        const ts = t.createdAt ? new Date(t.createdAt) : new Date(t.dueDate);
+        const te = new Date(t.dueDate);
+        ts.setHours(0,0,0,0); te.setHours(0,0,0,0);
+        const cw = 40;
+        const sd = Math.floor((ts - startDate) / 86400000);
+        const dur = Math.max(1, Math.floor((te - ts) / 86400000) + 1);
+        const left = Math.max(0, sd) * cw;
+        const width = Math.min(days - Math.max(0, sd), dur - Math.max(0, -sd)) * cw;
+        const doneClass = t.status === 'done' ? ' timeline-bar-done' : '';
+        html += `<div class="timeline-row"><div class="timeline-row-label" onclick="app.openTask('${t.id}')"><span class="project-dot" style="background:${projColor}"></span>${this.esc(t.title)}</div><div class="timeline-row-cells">${dates.map(dd => `<div class="timeline-cell ${isToday(dd)?'today':''} ${isWeekend(dd)?'weekend':''}"></div>`).join('')}${width > 0 ? `<div class="timeline-bar${doneClass}" style="left:${left}px;width:${width}px;background:${projColor}" onclick="app.openTask('${t.id}')">${width>60?this.esc(t.title):''}</div>` : ''}</div></div>`;
+      });
+
+      // If all tasks fell outside the visible window, hint at how to find them
+      if (!tasks.length) {
+        html += `<div class="timeline-out-of-window">
+          <p>${tasksAll.length} task${tasksAll.length===1?'':'s'} in this project — none fall in the next 4 weeks.</p>
+          <p class="empty-state-sub">Use the arrows above to scroll back to find them.</p>
+        </div>`;
+      }
+      html += `</div>`; // /.timeline-container
+
+      container.innerHTML = html;
+      // Attach drag handlers to bars
+      container.querySelectorAll('.timeline-bar').forEach(bar => {
+        const onclick = bar.getAttribute('onclick');
+        const match = onclick?.match(/openTask\('([^']+)'\)/);
+        if (match) this.initTimelineDrag(bar, match[1]);
+      });
       return;
     }
 
@@ -1418,7 +1486,6 @@ export const renderActions = {
 
   handleMentionKeydown(e) {
     const dd = document.getElementById('mentions-dropdown');
-    if (!dd?.classList.contains('show')) return;
     if (e.key === 'ArrowDown') { e.preventDefault(); this._mentionIdx++; this.highlightMention(); }
     if (e.key === 'ArrowUp') { e.preventDefault(); this._mentionIdx = Math.max(0, this._mentionIdx - 1); this.highlightMention(); }
     if (e.key === 'Enter' || e.key === 'Tab') { const active = dd.querySelector('.mention-item.active'); if (active) { e.preventDefault(); this.insertMention(active.dataset.name); } }

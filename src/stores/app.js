@@ -16,13 +16,17 @@ export const useAppStore = defineStore('app', {
 
   // Data
   users: [], projects: [], tasks: [], notifications: [], labels: [],
-  currentTaskId: null, editingProjectId: null, editingUserId: null,
+  currentTaskId: null, editingProjectId: null, archivingProjectId: null, editingUserId: null,
+  // Bumped by selectProject() so SidebarRecents recomputes from localStorage.
+  _recentsTick: 0,
   editingTaskId: null, draggedTaskId: null, timelineOffset: 0,
   currentView: 'home', selectedTasks: [], cmdSelectedIndex: 0, selectedProjectId: null, projectViewMode: 'list',
   appStarted: false,
   loginError: false,
   focusMode: false,  // ADHD focus: show only today's actionable tasks
-  theme: 'light', draggedSubtaskId: null,
+  // Default to dark to match the sister site (n.thedigitalvitamins.com).
+  // User pref is persisted via save(), so anyone who already toggled keeps theirs.
+  theme: 'dark', draggedSubtaskId: null,
   currentUserId: null,
   boardColumns: [],
   collapsedTasks: [], // accordion state for tree view (persisted)
@@ -237,15 +241,18 @@ export const useAppStore = defineStore('app', {
     });
 
     // Search & Filters
-    document.getElementById('search-input').addEventListener('input', () => {
+    // Optional chaining everywhere because the Vue refactor moved some controls
+    // (e.g. desktop search-input collapsed into command palette) — bindEvents
+    // shouldn't crash when an element it expected has been removed.
+    document.getElementById('search-input')?.addEventListener('input', () => {
       if (this.currentView === 'my-tasks') this.renderMyTasks();
       if (this.currentView === 'board') this.renderBoard();
     });
     ['filter-project', 'filter-status', 'filter-priority', 'filter-label', 'filter-assignee'].forEach(id => {
       document.getElementById(id)?.addEventListener('change', () => this.renderMyTasks());
     });
-    document.getElementById('board-project-select').addEventListener('change', () => this.renderBoard());
-    document.getElementById('timeline-project-select').addEventListener('change', () => this.renderTimeline());
+    document.getElementById('board-project-select')?.addEventListener('change', () => this.renderBoard());
+    document.getElementById('timeline-project-select')?.addEventListener('change', () => this.renderTimeline());
 
     // Timeline nav
     document.getElementById('timeline-prev').addEventListener('click', () => { this.timelineOffset -= 7; this.renderTimeline(); });
@@ -763,11 +770,15 @@ export const useAppStore = defineStore('app', {
   },
 
   populateSelects() {
+    // Archived projects are hidden from pickers/filters — but if the current
+    // value points to one (e.g. you're still viewing an archived project),
+    // we keep that option so the select doesn't silently lose its value.
     ['filter-project', 'board-project-select', 'timeline-project-select', 'modal-task-project', 'panel-project'].forEach(id => {
       const el = document.getElementById(id); if (!el) return;
       const val = el.value;
       const prefix = (id.includes('modal') || id.includes('panel')) ? '<option value="">No project</option>' : '<option value="">All Projects</option>';
-      el.innerHTML = prefix + this.projects.map(p => `<option value="${p.id}">${this.esc(p.name)}</option>`).join('');
+      const visible = this.projects.filter(p => !p.archived || p.id === val);
+      el.innerHTML = prefix + visible.map(p => `<option value="${p.id}">${this.esc(p.name)}${p.archived ? ' (archived)' : ''}</option>`).join('');
       el.value = val;
     });
     ['modal-task-assignee', 'panel-assignee'].forEach(id => {
@@ -947,33 +958,4 @@ export const useAppStore = defineStore('app', {
   moveBoardColumn(id, direction) {
     const idx = this.boardColumns.findIndex(c => c.id === id);
     if (idx < 0) return;
-    const newIdx = idx + direction;
-    if (newIdx < 0 || newIdx >= this.boardColumns.length) return;
-    const temp = this.boardColumns[idx];
-    this.boardColumns[idx] = this.boardColumns[newIdx];
-    this.boardColumns[newIdx] = temp;
-    this.saveBoardColumns();
-    this.renderColumnManager();
-    this.renderBoard();
-  },
-
-  // ===== DEPENDENCY HELPERS =====
-  isBlocked(task) {
-    if (!task.blockedBy?.length) return false;
-    return task.blockedBy.some(id => {
-      const blocker = this.tasks.find(t => t.id === id);
-      return blocker && blocker.status !== 'done';
-    });
-  },
-
-  getBlockedBy(task) {
-    if (!task.blockedBy?.length) return [];
-    return task.blockedBy.map(id => this.tasks.find(t => t.id === id)).filter(Boolean);
-  },
-
-  getBlocking(taskId) {
-    return this.tasks.filter(t => t.blockedBy?.includes(taskId));
-  },
-
-  }
-})
+    const newIdx = idx +

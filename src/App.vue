@@ -1,5 +1,8 @@
 <template>
-  <div>
+  <!-- display:contents makes this wrapper transparent to layout — the rendered
+       sidebar/main below become direct flex children of #app from index.html,
+       so the desktop two-column shell actually fills the viewport. -->
+  <div class="app-root">
     <!-- Init error boundary: shown when store.init() throws unrecoverably -->
     <div v-if="initError" class="init-error-boundary">
       <div class="init-error-card">
@@ -88,10 +91,4 @@ onMounted(() => {
     const msg  = reason?.message || String(reason) || ''
     if (name === 'AbortError') return
     if (/ResizeObserver loop/i.test(msg)) return
-    if (/^Request was autocancelled$/i.test(msg)) return
-    if (store.appStarted && typeof store.toast === 'function') {
-      store.toast('Something went wrong. If the problem persists, try refreshing the page.', 'error')
-    }
-  })
-})
-</script>
+  

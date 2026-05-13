@@ -38,12 +38,25 @@
   --sidebar-width: 240px;
   --topbar-height: 48px;
   --transition: 0.12s ease;
+  /* Consistent card padding — used by every "card surface" across the app
+   * (home dashboard cards, project page sections, settings panes, modals).
+   * One token = one place to retune density site-wide. */
+  --pad-card: 24px;
+  --pad-card-sm: 16px;
+  --gap-card: 24px;
+  /* Notion-style centered content column for document-style views.
+   * 720px matches Notion's reading column width — at this width the home
+   * grid collapses to 2 columns (matches Notion's editorial rhythm), and
+   * list views become comfortably scannable single columns.
+   * Wide views (Board, Timeline) opt out by setting their own width. */
+  --content-max: 720px;
   /* Priority chips: red / yellow / blue / gray, Notion-tag levels. */
   --p0: #d44c47; --p1: #cb912f; --p2: #337ea9; --p3: #9b9a97;
-  /* Accent — Notion blue. Reserve for selection / focus / link / primary CTA only. */
-  --accent: #2383e2;
-  --accent-hover: #1f6dc4;
-  --accent-light: rgba(35, 131, 226, 0.14);
+  /* Accent — warm orange to match n.thedigitalvitamins.com brand (flame/bolt).
+   * Reserve for selection / focus / link / primary CTA only. */
+  --accent: #ff6633;
+  --accent-hover: #e8541f;
+  --accent-light: rgba(255, 102, 51, 0.12);
   --bg-secondary: #f5f5f5;
   --bg-card: #ffffff;
   --bg-hover: rgba(0, 0, 0, 0.04);
@@ -56,22 +69,22 @@
   --shadow-accent: rgba(15, 15, 15, 0.04);
 }
 
-/* ===== Dark Theme — neutral palette =====
- * Page neutral-900, sidebar neutral-950, content text neutral-200.
- * Tracks Tailwind's neutral-* scale exactly — no warm tint.
+/* ===== Dark Theme — warm-neutral palette =====
+ * Page neutral-900, sidebar neutral-950, content text warm-tinted off-white
+ * (#e0ddd8) to match the paper feel of n.thedigitalvitamins.com.
  */
 [data-theme="dark"] {
   --bg: #171717;
   --bg-white: #1f1f1f;
-  --bg-sidebar: #0a0a0a;
-  --bg-sidebar-hover: rgba(255, 255, 255, 0.05);
-  --bg-sidebar-active: rgba(255, 255, 255, 0.08);
-  --text: #e5e5e5;
-  --text-secondary: #a3a3a3;
+  --bg-sidebar: #0f0f0f;
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.04);
+  --bg-sidebar-active: rgba(255, 255, 255, 0.07);
+  --text: #e0ddd8;
+  --text-secondary: #a3a09b;
   --text-light: #737373;
-  --text-sidebar: #a3a3a3;
-  --text-sidebar-active: #f5f5f5;
-  --border: rgba(255, 255, 255, 0.08);
+  --text-sidebar: #a3a09b;
+  --text-sidebar-active: #f0ede7;
+  --border: rgba(255, 255, 255, 0.07);
   --border-light: rgba(255, 255, 255, 0.04);
   --primary: #e5e5e5;
   --primary-light: #a3a3a3;
@@ -89,9 +102,10 @@
   --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
   --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
   --shadow-xl: 0 14px 30px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
-  --accent: #4392e3;
-  --accent-hover: #5ca3ed;
-  --accent-light: rgba(67, 146, 227, 0.18);
+  /* Warm orange accent — slightly lifted on dark surfaces for pop. */
+  --accent: #ff7a47;
+  --accent-hover: #ff9166;
+  --accent-light: rgba(255, 122, 71, 0.16);
   --bg-secondary: #262626;
   --bg-card: #1f1f1f;
   --bg-hover: rgba(255, 255, 255, 0.05);
@@ -195,8 +209,9 @@ body {
   font-family: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg);
   color: var(--text);
-  line-height: 1.5;
-  font-size: 15px;
+  /* Tighter than the default 1.5 — closer to Notion/n.thedigitalvitamins.com */
+  line-height: 1.45;
+  font-size: 14px;
   letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -207,7 +222,21 @@ body {
 .hidden { display: none !important; }
 
 /* ===== Layout ===== */
-#app { display: flex; height: 100vh; }
+/* Both the index.html mount target AND the AppShell.vue root use id="app"
+ * (historical artifact — the legacy single-file app had this single element,
+ * the refactor kept it on both for backwards-compat with existing CSS).
+ * The OUTER #app is a viewport-sized flex row. The INNER #app, after we
+ * collapse the App.vue wrapper via `display: contents` below, becomes a
+ * direct flex child of the outer — so it needs flex:1 to actually fill the
+ * row rather than shrink to the intrinsic width of (sidebar + content). */
+#app { display: flex; height: 100vh; flex: 1; min-width: 0; width: 100%; }
+/* App.vue wraps everything in <div class="app-root"> because Vue 3 needs a
+ * single root element. We don't want that wrapper to participate in layout —
+ * `display: contents` removes its box and lets the inner sidebar/main become
+ * direct flex children of #app, so the desktop shell fills the viewport. The
+ * fixed-position overlays inside (init spinner, error boundary, login) don't
+ * depend on the wrapper's box, so this is safe. */
+.app-root { display: contents; }
 .sidebar { width: var(--sidebar-width); background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: width var(--transition); position: relative; z-index: 10; flex-shrink: 0; overflow: hidden; }
 .sidebar.collapsed { width: 0; border-right: none; }
 .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
@@ -309,6 +338,33 @@ body {
 .project-item-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .project-item-actions { display: none; gap: 2px; }
 .project-item:hover .project-item-actions { display: flex; }
+
+/* Archived projects section in the sidebar — collapsed by default. Visually
+ * separated from active projects by a thin top border and softer text. */
+.archived-section { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-light); }
+.archived-toggle {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; padding: 0 8px; height: 24px;
+  background: none; border: none; cursor: pointer;
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-light); border-radius: var(--radius);
+  font-family: inherit;
+  transition: background-color var(--transition), color var(--transition);
+}
+.archived-toggle:hover { background: var(--bg-sidebar-hover); color: var(--text-secondary); }
+.archived-chevron { transition: transform 0.18s ease; transform: rotate(-90deg); flex-shrink: 0; opacity: 0.7; }
+.archived-section.open .archived-chevron { transform: rotate(0deg); }
+.archived-label { flex: 1; text-align: left; }
+.archived-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 16px; padding: 0 5px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0;
+  border-radius: 8px; background: var(--border-light); color: var(--text-secondary);
+}
+.archived-list { display: flex; flex-direction: column; gap: 0; margin-top: 2px; }
+.project-item-archived { opacity: 0.62; }
+.project-item-archived:hover { opacity: 0.95; }
+.project-item-archived .project-item-name { font-style: italic; }
 /* Project dot occupies the same 18px leading column as nav-item icons —
  * the wrapper provides the column, the inner dot stays a small color cue. */
 .project-dot-col { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; flex-shrink: 0; }
@@ -358,6 +414,44 @@ body {
 .sidebar-user .team-avatar { width: 18px; height: 18px; font-size: 9px; flex-shrink: 0; }
 .sidebar-user-meta { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
 .sidebar-user-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Brand variant: used when SidebarUser sits at the top of the sidebar as the
+ * primary identity row (matches n.thedigitalvitamins.com). Aligns with the
+ * nav-item rhythm below (left padding 8px so the tile's left edge sits in the
+ * same column as nav-item icons), but with a taller row + larger avatar so it
+ * still reads as the identity anchor, not a list row.  */
+/* The user-variant wrapper inherits .sidebar-brand's 16px horizontal padding
+ * by default — but the nav-item column below sits at x=16 (sidebar-nav's 8px
+ * + nav-item's 8px). To put the M tile at the same x=16, we zero out the
+ * outer padding and let the inner .sidebar-user-brand's 8px provide a single
+ * source of inset, then the sidebar-nav adds its own 8px outside.
+ *
+ * Result: tile left edge = nav-icon left edge = 16px from sidebar edge. */
+.sidebar-brand-user {
+  display: block; text-decoration: none;
+  height: auto;
+  padding: 4px 8px;
+}
+.sidebar-user.sidebar-user-brand {
+  height: 36px;
+  padding: 0 8px;     /* same left edge as nav-item icons (x=8) */
+  margin-bottom: 4px;
+  border-radius: var(--radius);
+  gap: 8px;           /* same gap nav-items use between icon and label */
+}
+.sidebar-user.sidebar-user-brand .team-avatar {
+  width: 22px; height: 22px; font-size: 10px; font-weight: 600;
+  border-radius: 5px;  /* square-ish tile, not a circle */
+}
+.sidebar-user.sidebar-user-brand .sidebar-user-name {
+  font-size: 14px; font-weight: 600; color: var(--text);
+}
+/* Smaller, less attention-grabbing role badge in the brand row context.
+ * The 11px default makes the badge fight the user's name for prominence. */
+.sidebar-user.sidebar-user-brand .role-badge {
+  font-size: 9px; padding: 0 5px; line-height: 1.5;
+  letter-spacing: 0.06em;
+}
 
 /* The Log out and Theme buttons are real <button>s acting as nav-items —
  * reset their default UA styling so they match anchor-based nav-items. */
@@ -468,26 +562,75 @@ body {
 .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
 
 /* ===== Content Area ===== */
-.content-area { flex: 1; overflow-y: auto; padding: 24px; background: var(--bg); }
+.content-area { flex: 1; overflow-y: auto; padding: var(--pad-card); background: var(--bg); }
 .content-area::-webkit-scrollbar { width: 5px; }
 .content-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 
 .view { display: none; }
 .view.active { display: block; }
 
-/* ===== Home View ===== */
-.home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.home-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
-.home-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 16px; letter-spacing: -0.01em; }
+/* Notion-style centered content for document-feel views. Wide views (Board,
+ * Timeline) opt out per-class below, where their horizontal scrolling tables
+ * need the full main-content width. */
+#view-home,
+#view-my-tasks,
+#view-project,
+#view-analytics,
+#view-workload,
+#view-settings {
+  max-width: var(--content-max);
+  margin-left: auto;
+  margin-right: auto;
+}
+/* Project view in Board / Timeline mode breaks out of the centered column so
+ * the chart can use the full main-content width. Achieved by the parent
+ * receiving a class via projectViewMode — we just override max-width when
+ * the inner container is a kanban or timeline. */
+#view-project:has(.kanban-view),
+#view-project:has(.timeline-container) {
+  max-width: none;
+}
 
-.welcome-card { grid-column: 1 / -1; background: var(--bg-white); border: 1px solid var(--border); position: relative; overflow: hidden; }
-.welcome-card h2 { font-size: 24px; font-weight: 700; color: var(--text); margin-bottom: 6px; letter-spacing: -0.02em; line-height: 1.2; }
-.welcome-card .subtitle { color: var(--text-secondary); font-size: 13px; }
+/* ===== Home View — sister-site density with real card chrome =====
+ * Sections are proper cards now (background + 1px hairline + 24px padding),
+ * but the visual feel stays quiet: section headers use uppercase muted-color
+ * letter-spaced labels rather than heavy h3 chrome.
+ */
+.home-dashboard { width: 100%; max-width: var(--content-max); margin: 0 auto; padding: 8px 0; }
+
+/* Auto-fit grid: 1 col on narrow, 2 on medium, 3 on wide. */
+.home-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: var(--gap-card); align-items: start; }
+
+/* Each card is a real surface again — bg, 1px hairline, generous padding. */
+.home-card {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--pad-card);
+  min-width: 0;
+}
+.home-card h3 {
+  font-size: 11px; font-weight: 600;
+  margin-bottom: 14px;
+  color: var(--text-light);
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+
+/* Welcome card: hero block spanning the full row width. */
+.welcome-card {
+  grid-column: 1 / -1;
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  position: relative;
+  padding: var(--pad-card);
+}
+.welcome-card h2 { font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 6px; letter-spacing: -0.02em; line-height: 1.2; }
+.welcome-card .subtitle { color: var(--text-secondary); font-size: 14px; line-height: 1.45; }
 
 /* Home stats — inline summary row replaces the hero-metric template.
  * One line of quiet meta with the numbers given gentle weight; the overdue
  * count picks up danger color when nonzero so it self-flags without chrome. */
-.home-stats { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-light); }
+.home-stats { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 12px; padding-top: 0; border-top: none; }
 .home-stat { display: inline-flex; align-items: baseline; gap: 6px; font-size: 14px; color: var(--text-secondary); }
 .home-stat-num { font-size: 17px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .home-stat.has-overdue .home-stat-num { color: var(--danger); }
@@ -521,10 +664,10 @@ body {
 .activity-text strong { color: var(--text); font-weight: 500; }
 .activity-text .time { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
 
-.task-overview-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-light); }
+.tasks-overview > li.task-overview-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-light); }
 .task-overview-item:last-child { border-bottom: none; }
-.task-overview-check { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--border); cursor: pointer; flex-shrink: 0; transition: all var(--transition); position: relative; }
-.task-overview-check:hover { border-color: var(--text-light); }
+.task-overview-check { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--text-light); background: transparent; cursor: pointer; flex-shrink: 0; transition: all var(--transition); position: relative; padding: 0; }
+.task-overview-check:hover { border-color: var(--text); }
 .task-overview-check.done { background: var(--done); border-color: var(--done); }
 .task-overview-check.done::after { content: ''; position: absolute; top: 3px; left: 5px; width: 4px; height: 7px; border: solid white; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
 .task-overview-name { flex: 1; font-size: 13px; }
@@ -535,6 +678,14 @@ body {
  * states should be short, recoverable, and stay out of the way. */
 .empty-state { padding: 16px; color: var(--text-light); font-size: 14px; line-height: 1.5; }
 .empty-state p { color: inherit; font-size: inherit; }
+/* Notion-quiet empty state: a single muted line with no chrome or extra
+ * padding. Used inside cards where the section already has its own header,
+ * so a verbose "All caught up — no upcoming deadlines." reads as noise. */
+.empty-state-quiet {
+  color: var(--text-light); font-size: 13px;
+  padding: 4px 0; margin: 0;
+  font-style: italic;
+}
 
 /* ===== My Tasks List ===== */
 .my-tasks-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
@@ -778,24 +929,74 @@ body {
 .timeline-controls { display: flex; gap: 6px; align-items: center; }
 .timeline-container { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-white); }
 .timeline-header-row { display: flex; position: sticky; top: 0; z-index: 2; background: var(--bg-white); border-bottom: 1px solid var(--border); }
-.timeline-label-col { width: 200px; flex-shrink: 0; padding: 10px 14px; font-size: 12px; font-weight: 500; color: var(--text-light); }
+.timeline-label-col { width: 200px; flex-shrink: 0; padding: 10px 14px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; }
 .timeline-days { display: flex; }
-.timeline-day { width: 40px; text-align: center; padding: 6px 0; font-size: 10px; color: var(--text-light); border-left: 1px solid var(--border-light); }
-.timeline-day.today { background: var(--primary-lighter); }
-.timeline-day.weekend { background: var(--bg); }
+.timeline-day {
+  width: 40px; text-align: center; padding: 6px 0;
+  font-size: 10px; color: var(--text-light);
+  border-left: 1px solid var(--border-light);
+}
+.timeline-day > div:last-child { font-weight: 600; font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+/* Weekend day labels: dimmed */
+.timeline-day.weekend { background: var(--bg); color: var(--text-light); opacity: 0.7; }
+/* Today: accent-tinted column header with bold orange number and a 2px
+ * accent left border to anchor the vertical today line below. */
+.timeline-day.today {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-left: 2px solid var(--accent);
+}
+.timeline-day.today > div:last-child { color: var(--accent); font-weight: 700; }
 
 .timeline-row { display: flex; border-bottom: 1px solid var(--border-light); }
 .timeline-row:hover { background: var(--bg); }
-.timeline-row-label { width: 200px; flex-shrink: 0; padding: 8px 14px; font-size: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.timeline-row-cells { display: flex; position: relative; flex: 1; min-height: 36px; }
+.timeline-row-label {
+  width: 200px; flex-shrink: 0; padding: 10px 14px;
+  font-size: 13px; font-weight: 500; color: var(--text);
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.timeline-row-cells { display: flex; position: relative; flex: 1; min-height: 40px; }
 .timeline-cell { width: 40px; border-left: 1px solid var(--border-light); }
-.timeline-cell.today { background: var(--primary-lighter); }
 .timeline-cell.weekend { background: var(--bg); }
-.timeline-bar { position: absolute; top: 6px; height: 24px; border-radius: 6px; font-size: 10px; color: white; display: flex; align-items: center; padding: 0 8px; white-space: nowrap; overflow: hidden; cursor: pointer; opacity: 0.7; transition: opacity var(--transition); }
-.timeline-bar:hover { opacity: 1; }
+/* Today cell: accent tint + 2px accent left border to draw a continuous
+ * vertical line across every row, making "now" instantly readable. */
+.timeline-cell.today {
+  background: var(--accent-light);
+  border-left: 2px solid var(--accent);
+}
+/* Bars: full color (was opacity 0.7 which faded gray colors into the bg),
+ * taller, more presence, with a subtle inset highlight for depth. */
+.timeline-bar {
+  position: absolute; top: 8px; height: 26px;
+  border-radius: 5px;
+  font-size: 11px; font-weight: 500; color: white;
+  display: flex; align-items: center; padding: 0 10px;
+  white-space: nowrap; overflow: hidden; cursor: pointer;
+  opacity: 0.92;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: opacity var(--transition), transform var(--transition);
+}
+.timeline-bar:hover { opacity: 1; transform: translateY(-1px); }
+.timeline-bar.timeline-bar-done { opacity: 0.45; text-decoration: line-through; }
+
+/* Project-scoped timeline controls (prev / today / next) sit above the chart. */
+.project-timeline-controls {
+  display: flex; gap: 6px; align-items: center;
+  margin-bottom: 14px;
+}
+.project-timeline-controls .btn-sm {
+  padding: 4px 12px; font-size: 12px; height: 28px;
+}
+
+/* Friendly hint when the project's tasks all fall outside the visible window. */
+.timeline-out-of-window {
+  padding: 24px; text-align: center; color: var(--text-secondary);
+}
+.timeline-out-of-window .empty-state-sub { font-size: 12px; color: var(--text-light); margin-top: 4px; }
 
 /* ===== Analytics ===== */
-.analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: var(--gap-card); align-items: start; }
 .analytics-full { grid-column: 1 / -1; }
 
 /* ===== Workload ===== */
@@ -940,16 +1141,51 @@ body {
 .modal-overlay.show { display: flex; }
 .modal { background: var(--bg-white); border-radius: var(--radius-lg); width: 480px; max-width: 90vw; max-height: 85vh; display: flex; flex-direction: column; border: 1px solid var(--border); box-shadow: var(--shadow-lg); }
 .modal.modal-sm { width: 380px; }
+.modal.modal-compact { width: 460px; }
 .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid var(--border); }
 .modal-header h3 { font-size: 15px; font-weight: 600; }
 .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
 .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Split footer puts destructive actions on the left, primary on the right.
+ * Empty left group collapses to zero width so primary actions still hug right. */
+.modal-footer-split { justify-content: space-between; align-items: center; }
+.modal-footer-left  { display: flex; gap: 4px; align-items: center; }
+.modal-footer-right { display: flex; gap: 8px; align-items: center; }
+
+/* Ghost-style buttons used for non-primary actions in modal footers — subtle
+ * until hovered so they stay visually quiet next to the primary CTA. */
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px;
+  background: none; border: none; border-radius: 6px;
+  font-size: 12px; font-weight: 500; font-family: inherit;
+  color: var(--text-light); cursor: pointer;
+  transition: background-color var(--transition), color var(--transition);
+}
+.btn-ghost:hover { background: var(--border-light); color: var(--text); }
+.btn-ghost svg { opacity: 0.8; }
+.btn-ghost-warn:hover  { color: var(--accent, #ff6633); background: var(--bg); }
+.btn-ghost-danger:hover { color: var(--danger, #dc2626); background: rgba(220, 38, 38, 0.08); }
 
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 5px; }
 .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg-white); color: var(--text); }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--text-light); outline: none; }
 .form-group textarea { resize: vertical; }
+.form-hint { display: block; margin-top: 6px; font-size: 11px; color: var(--text-light); }
+
+/* Archive project modal — lead copy + warning banner. */
+.archive-modal-lead { font-size: 13px; color: var(--text-secondary); line-height: 1.55; margin-bottom: 14px; }
+.archive-modal-lead strong { color: var(--text); font-weight: 600; }
+.archive-modal-warning {
+  display: none;
+  padding: 10px 12px; margin-bottom: 16px;
+  font-size: 12px; line-height: 1.5; color: var(--text-secondary);
+  background: var(--bg); border: 1px solid var(--border); border-left: 3px solid var(--accent, #ff6633);
+  border-radius: 8px;
+}
+.archive-modal-warning.show { display: block; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 .color-picker { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -1154,18 +1390,13 @@ input:focus, select:focus, textarea:focus { outline: none; }
 /* Home stats are static — no hover lift. The inline summary form doesn't
  * support a meaningful click target, so transform animations would be noise. */
 
-/* -- Home card hover -- */
-.home-card {
-  transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
-              box-shadow 0.35s ease, border-color 0.3s ease;
-}
-.home-card:hover {
-  box-shadow: 0 8px 28px var(--shadow-accent);
-  border-color: var(--text-light);
-}
+/* -- Home card hover -- removed; flat sections have no hover lift -- */
+.home-card { transition: none; }
+.home-card:hover { box-shadow: none; border-color: transparent; }
 
-/* -- Welcome card: animated warm gradient shimmer -- */
+/* -- Welcome card shimmer disabled in the Notion-flat treatment -- */
 .welcome-card::before {
+  display: none;
   content: '';
   position: absolute;
   top: -50%;
@@ -1485,7 +1716,8 @@ input:focus, select:focus, textarea:focus { outline: none; }
   display: flex;
   align-items: center;
   gap: 0;
-  font-size: 13px;
+  /* Notion uses ~14-15px for the topbar location label, with a 16px emoji. */
+  font-size: 14px;
   color: var(--text-secondary);
   margin-left: 8px;
   min-width: 0;
@@ -1494,13 +1726,13 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .breadcrumb-current {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   color: var(--text);
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   flex-shrink: 0;
 }
-.breadcrumb-icon { font-size: 14px; line-height: 1; }
+.breadcrumb-icon { font-size: 16px; line-height: 1; }
 /* Hidden parent path — collapses to 0 width at rest, slides open on
  * .breadcrumb:hover. The `display: flex` stays so contents are measured
  * for the transition. */
@@ -1522,16 +1754,17 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .breadcrumb-sep {
   color: var(--text-light);
   margin: 0 6px;
-  font-size: 12px;
+  font-size: 13px;
   user-select: none;
 }
 .breadcrumb a {
   color: var(--text-secondary);
   text-decoration: none;
   cursor: pointer;
-  transition: color var(--transition);
-  padding: 2px 4px;
+  transition: color var(--transition), background-color var(--transition);
+  padding: 2px 6px;
   border-radius: var(--radius);
+  font-size: 14px;
 }
 .breadcrumb a:hover {
   color: var(--text);
@@ -2074,13 +2307,22 @@ input:focus, select:focus, textarea:focus { outline: none; }
 /* enter-hint removed — auto-save replaces manual save */
 
 /* ===== Today's Focus ===== */
-.today-focus-card { background: var(--bg-white); border: 1.5px solid var(--accent); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm); }
-.today-focus-card h3 { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 10px; }
+/* Today/This Week focus card: real card chrome, but no aggressive accent border.
+ * Same padding token as other home cards for consistent rhythm. */
+.today-focus-card {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--pad-card);
+  margin-bottom: var(--gap-card);
+  box-shadow: none;
+}
+.today-focus-card h3 { font-size: 11px; font-weight: 600; color: var(--text-light); margin-bottom: 14px; letter-spacing: 0.08em; text-transform: uppercase; }
 .focus-header { display: flex; align-items: center; margin-bottom: 10px; }
 .focus-tabs { display: flex; background: var(--bg-secondary); border-radius: 6px; padding: 2px; gap: 0; }
-.focus-tab { background: none; border: none; padding: 4px 14px; font-size: 12px; font-weight: 600; color: var(--text-light); cursor: pointer; border-radius: 5px; transition: all 0.2s ease; }
+.focus-tab { background: none; border: none; padding: 4px 0; margin-right: 16px; font-size: 12px; font-weight: 500; color: var(--text-light); cursor: pointer; border-radius: 0; transition: color 0.15s ease; border-bottom: 2px solid transparent; }
 .focus-tab:hover { color: var(--text); }
-.focus-tab.active { background: var(--bg-white); color: var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+.focus-tab.active { background: transparent; color: var(--text); border-bottom-color: var(--accent); box-shadow: none; font-weight: 600; }
 .focus-tab-content { display: none; }
 .focus-tab-content.active { display: block; }
 .week-section-label { font-size: 11px; font-weight: 600; color: var(--text-light); opacity: 0.8; padding: 10px 8px 4px; }
@@ -3305,243 +3547,4 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .home-stat-num { font-size: 15px; }
 
   /* ══════════════════════════════════════════════════════
-     MY TASKS HEADER — mobile filter system
-     Desktop buttons + filter-group hidden.
-     Replaced by a single-line chip bar + overlay sheet.
-     ══════════════════════════════════════════════════════ */
-  .my-tasks-header { flex-direction: row; gap: 0; margin-bottom: 6px; }
-  .my-tasks-header-left { display: none !important; }  /* Add Task / Brain dump / Focus — not needed, FAB + overlay */
-  .filter-group { display: none !important; }           /* desktop filters hidden */
-  .btn-kbd { display: none; }
-
-  /* Mobile filter bar: compact chip row */
-  .mobile-filter-bar {
-    display: flex !important;
-    gap: 6px; width: 100%;
-  }
-  .mobile-sort-chip, .mobile-focus-chip {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 5px 10px; border-radius: 16px;
-    font-size: 12px; font-weight: 500;
-    background: var(--bg-secondary); color: var(--text-secondary);
-    border: 1px solid var(--border); cursor: pointer;
-    transition: all 0.15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .mobile-sort-chip:active, .mobile-focus-chip:active {
-    background: var(--bg-hover);
-  }
-  .mobile-focus-chip.active {
-    background: var(--accent); color: #fff; border-color: var(--accent);
-  }
-
-  /* Mobile filter overlay — full-screen bottom sheet */
-  .mobile-filter-overlay {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.35);
-    z-index: 200;
-    align-items: flex-end; justify-content: center;
-  }
-  .mobile-filter-overlay.show { display: flex; }
-  .mobile-filter-sheet {
-    width: 100%; max-height: 85dvh;
-    background: var(--bg-white);
-    border-radius: 16px 16px 0 0;
-    display: flex; flex-direction: column;
-    animation: slideUpModal 0.25s cubic-bezier(0.4,0,0.2,1);
-    overflow: hidden;
-  }
-  .mobile-filter-sheet-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 16px 10px; border-bottom: 1px solid var(--border-light);
-  }
-  .mobile-filter-sheet-header h3 { font-size: 15px; font-weight: 600; }
-  .mobile-filter-sheet-body {
-    padding: 14px 16px; overflow-y: auto; flex: 1;
-  }
-  .mobile-filter-label {
-    display: block; font-size: 11px; font-weight: 600;
-    color: var(--text-secondary); text-transform: uppercase;
-    letter-spacing: 0.04em; margin: 12px 0 4px;
-  }
-  .mobile-filter-label:first-child { margin-top: 0; }
-  .mobile-filter-select {
-    width: 100%; padding: 10px 12px;
-    border: 1px solid var(--border); border-radius: 10px;
-    font-size: 15px; background: var(--bg); color: var(--text);
-    font-family: inherit; appearance: auto;
-  }
-  .mobile-filter-sheet-footer {
-    display: flex; gap: 8px; padding: 12px 16px;
-    border-top: 1px solid var(--border-light);
-  }
-  .mobile-filter-sheet-footer .btn-secondary,
-  .mobile-filter-sheet-footer .btn-primary { flex: 1; padding: 10px; font-size: 14px; }
-
-  /* ── Section headers in My Tasks (grouped by status) ── */
-  .task-section-header { font-size: 12px; padding: 6px 10px; margin-top: 8px; }
-
-  /* ══════════════════════════════════════════════════════
-     TIMELINE — mobile-optimized
-     Vertical list instead of horizontal gantt chart.
-     ══════════════════════════════════════════════════════ */
-  .timeline-controls { flex-wrap: wrap; gap: 4px; }
-  .timeline-controls .filter-select { font-size: 12px; padding: 4px 8px; }
-  .timeline-controls .btn-secondary { font-size: 12px; padding: 4px 8px; min-height: 32px; }
-  .timeline-container {
-    overflow-x: auto; -webkit-overflow-scrolling: touch;
-    border-radius: 8px;
-  }
-  .timeline-label-col { width: 120px; font-size: 11px; padding: 6px 8px; }
-  .timeline-day { width: 32px; font-size: 9px; padding: 4px 0; }
-  .timeline-row-label { width: 120px; font-size: 11px; padding: 6px 8px; }
-  .timeline-row-cells { min-height: 30px; }
-  .timeline-cell { width: 32px; }
-  .timeline-bar { top: 4px; height: 22px; font-size: 9px; padding: 0 4px; }
-
-  /* ── Settings ── */
-  .settings-layout { flex-direction: column; height: auto; }
-  .settings-sidenav {
-    width: 100% !important;
-    flex-direction: row; flex-wrap: nowrap;
-    gap: 3px; padding: 8px 10px;
-    border-right: none; border-bottom: 1px solid var(--border);
-    overflow-x: auto; -webkit-overflow-scrolling: touch;
-  }
-  .settings-sidenav-label { display: none; }
-  .settings-sidenav-item {
-    padding: 5px 12px; border-radius: 16px; font-size: 11px;
-    white-space: nowrap; flex-shrink: 0;
-  }
-  .settings-sidenav-item.active { background: var(--accent); color: #fff; }
-  .settings-panes { padding: 14px 10px; }
-  .settings-pane-header h2 { font-size: 15px; }
-  .settings-row { flex-direction: column; gap: 6px; align-items: flex-start; }
-  .settings-row-info { width: 100%; }
-  .settings-row-info h3 { font-size: 13px; }
-  .settings-row-info span { font-size: 11px; }
-
-  /* ── Board header ── */
-  .board-header { flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-  .board-header-left { flex-wrap: wrap; gap: 4px; }
-
-  /* ── Notifications ── */
-  .notification-dropdown {
-    position: fixed !important;
-    top: 44px !important; right: 0 !important; left: 0 !important;
-    width: 100% !important; max-height: 70vh;
-    border-radius: 0 0 10px 10px; overflow-y: auto;
-  }
-
-  /* ── Timeline ── */
-  .timeline-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-
-  /* ── Bulk bar ── */
-  .bulk-bar { flex-wrap: wrap; gap: 4px; padding: 6px 10px; }
-  .bulk-bar .btn-secondary { font-size: 11px; padding: 4px 8px; }
-
-  /* ── Focus mode ── */
-  .focus-mode-btn { font-size: 10px; padding: 4px 8px; }
-
-  /* ── Command palette ── */
-  .cmd-palette-content { width: 96vw !important; margin: 0 auto; top: 50px !important; }
-
-  /* ── Shortcuts hint ── */
-  .shortcuts-hint { bottom: calc(var(--bottom-nav-height) + 8px); }
-
-  /* ── Touch devices: no hover-only UI ── */
-  @media (hover: none) {
-    .task-list-meta { opacity: 1 !important; visibility: visible !important; }
-    .card-meta { opacity: 1 !important; visibility: visible !important; }
-    .task-card .priority-badge { visibility: visible !important; opacity: 0.8 !important; }
-    .task-card .blocked-indicator { visibility: visible !important; opacity: 0.7 !important; }
-    .card-project-tag { opacity: 1 !important; }
-  }
-}
-
-/* ============================================================
-   SMALL MOBILE  ≤ 374px  (SE / older iPhones / small Androids)
-   ============================================================ */
-@media (max-width: 374px) {
-  .page-title { max-width: 90px; font-size: 14px; }
-  .kanban-column { min-width: 90vw; }
-  .bottom-nav-item span { display: none; }
-  .bottom-nav-fab > svg { width: 36px; height: 36px; padding: 9px; }
-  .task-list-name { font-size: 12px !important; }
-  .task-list-meta { font-size: 10px; }
-  .content-area { padding: 8px; }
-}
-
-/* ============================================================
-   UNIVERSAL TOUCH TARGETS  (≤ 767px)
-   Minimum 44×44 tap areas on interactive elements
-   ============================================================ */
-@media (max-width: 767px) {
-  .nav-item, .bottom-nav-item, .btn-icon, .btn-icon-sm,
-  .btn-primary, .btn-secondary, .btn-danger,
-  .context-chip, .notif-tab,
-  .subtask-row, .label-chip, .project-item {
-    min-height: 44px;
-  }
-  /* Task list items are intentionally 40px for density — still comfortably tappable */
-  .task-list-item { min-height: 40px; }
-  .btn-icon, .btn-icon-sm { min-width: 44px; }
-  .desc-tb-btn { width: 32px; height: 32px; }
-  .panel-title-input { font-size: 16px; }
-  input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
-}
-
-/* ============================================================
-   DARK MODE — bottom nav and drawer adjustments
-   ============================================================ */
-[data-theme="dark"] .bottom-nav { background: var(--bg-sidebar); border-top-color: var(--border); }
-[data-theme="dark"] .bottom-nav-item.active { color: var(--accent); }
-[data-theme="dark"] .bottom-nav-item { color: var(--text-secondary); }
-[data-theme="dark"] .mobile-header { background: var(--bg-sidebar); border-bottom-color: var(--border); }
-[data-theme="dark"] .sidebar-backdrop { background: rgba(0,0,0,0.65); }
-[data-theme="dark"] .modal-overlay { background: rgba(0,0,0,0.4); }
-[data-theme="dark"] .overlay { background: rgba(0,0,0,0.35); }
-[data-theme="dark"] .conv-task-overlay { background: rgba(0,0,0,0.5); }
-[data-theme="dark"] .notification-dropdown { background: var(--bg-card); border-color: var(--border); }
-[data-theme="dark"] .filter-select { background: var(--bg-secondary); border-color: var(--border); color: var(--text); }
-[data-theme="dark"] .task-card { border-color: var(--border); }
-[data-theme="dark"] .inline-add-row input { background: var(--bg-secondary); color: var(--text); }
-[data-theme="dark"] .mobile-sort-chip, [data-theme="dark"] .mobile-focus-chip { background: var(--bg-secondary); border-color: var(--border); color: var(--text-secondary); }
-[data-theme="dark"] .mobile-filter-sheet { background: var(--bg-card); }
-[data-theme="dark"] .mobile-filter-overlay { background: rgba(0,0,0,0.55); }
-[data-theme="dark"] .mobile-filter-select { background: var(--bg-secondary); border-color: var(--border); color: var(--text); }
-
-/* ===== Accessibility — focus-visible & reduced motion =====
- * The codebase strips outline:none in 16+ places to avoid the default browser
- * ring on mouse interaction. That leaves keyboard users without any cue.
- * The :focus-visible pseudo only matches when the browser believes the focus
- * came from a keyboard, so we can put the ring back without re-introducing
- * the mouse-click ring. Notion uses a 2px blue ring at ~45% alpha — same here.
- */
-:where(button, [role="button"], a, input, select, textarea, [tabindex]):focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-light);
-  border-radius: var(--radius);
-}
-/* Inputs already have a :focus border-color shift; pair it with the same ring
- * so keyboard focus is visually distinct from a mouse focus / hover state. */
-:where(input, select, textarea):focus-visible {
-  border-color: var(--accent);
-}
-
-/* Respect users who disable motion. Keeps animations technically present so
- * any code that listens for animationend still fires, but compresses them so
- * they're imperceptible. Reference: WCAG 2.3.3 (AAA) and the Animation
- * accessibility guidance in WCAG 2.1. */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
+     MY TASK

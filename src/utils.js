@@ -9,6 +9,25 @@ export function generateId() {
   return Array.from({ length: 15 }, () => c[Math.floor(Math.random() * c.length)]).join('');
 }
 
+/**
+ * Deterministic default emoji for a project that hasn't picked one yet.
+ * Hashes the project id so the same project gets the same emoji forever —
+ * no flicker on re-render — while still spreading variety across projects.
+ * Notion's UX pattern: every page has emoji identity, not a colored dot.
+ */
+const DEFAULT_PROJECT_EMOJIS = [
+  '📁','📋','📌','🚀','⭐','💡','📊','🎯','🎨','🛠️',
+  '📚','✨','🌱','🔬','💼','🗂️','🧭','🔥','🪐','🧩',
+];
+export function defaultProjectEmoji(project) {
+  if (!project) return '📁';
+  if (project.icon) return project.icon;
+  const key = project.id || project.name || '';
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return DEFAULT_PROJECT_EMOJIS[h % DEFAULT_PROJECT_EMOJIS.length];
+}
+
 /** HTML-escape a string */
 export function esc(str) {
   const d = document.createElement('div');
@@ -223,32 +242,4 @@ export function renderDescriptionMd(text) {
     // Empty line → paragraph break spacer
     if (raw.trim() === '') {
       closeList();
-      html += '<div class="md-gap"></div>';
-      continue;
-    }
-
-    // Plain paragraph line
-    closeList();
-    html += `<p class="md-p">${inlineMd(escaped)}</p>`;
-  }
-
-  closeList();
-  return html;
-}
-
-/**
- * Append an activity-log entry and cap the array at 50 entries (D-01).
- * Mutates the task object in place.
- */
-export function appendActivity(task, text) {
-  task.activityLog = task.activityLog || [];
-  task.activityLog.push({ text, timestamp: new Date().toISOString() });
-  if (task.activityLog.length > 50) task.activityLog = task.activityLog.slice(-50);
-}
-
-/** Set selected options on a <select multiple> by an array of values */
-export function setMultiSelect(elementId, values) {
-  const el = document.getElementById(elementId);
-  if (!el) return;
-  Array.from(el.options).forEach(o => { o.selected = (values || []).includes(o.value); });
-}
+      html += '<div class="md-gap"></div>'

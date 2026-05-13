@@ -35,7 +35,7 @@ export const syncActions = {
       // so a malformed id is a stored-XSS vector.
       const validIds = arr => arr.filter(r => safeId(r.id));
       this.users = validIds(users).map(r => ({ id: r.id, name: r.name, email: r.email, role: r.role || 'user', color: r.color || '#7a7a7a' }));
-      this.projects = validIds(projects).map(r => ({ id: r.id, name: r.name, color: r.color, description: r.description, icon: r.icon || '', managerId: r.managerId || '' }));
+      this.projects = validIds(projects).map(r => ({ id: r.id, name: r.name, color: r.color, description: r.description, icon: r.icon || '', managerId: r.managerId || '', archived: !!r.archived, archiveNote: r.archiveNote || '', archivedAt: r.archivedAt || '' }));
       this.tasks = validIds(tasks).map(r => ({
         id: r.id, title: r.title, description: r.description || '', status: r.status || 'todo',
         projectId: r.projectId || '', assigneeId: r.assigneeId || '', dueDate: r.dueDate || '',
@@ -184,7 +184,7 @@ export const syncActions = {
     try {
       const snap = _pbSnapshot || {};
       const collections = [
-        { name: 'projects', data: this.projects, toRecord: r => ({ name: r.name, color: r.color, description: r.description, icon: r.icon || '', managerId: r.managerId || '' }) },
+        { name: 'projects', data: this.projects, toRecord: r => ({ name: r.name, color: r.color, description: r.description, icon: r.icon || '', managerId: r.managerId || '', archived: !!r.archived, archiveNote: r.archiveNote || '', archivedAt: r.archivedAt || '' }) },
         { name: 'labels',   data: this.labels,   toRecord: r => ({ name: r.name, color: r.color }) },
         {
           name: 'tasks', data: this.tasks,
@@ -272,7 +272,7 @@ export const syncActions = {
   async _subscribeToRealtime() {
     const collections = [
       { name: 'users',         store: 'users',         map: r => ({ id: r.id, name: r.name, email: r.email, role: r.role || 'user', color: r.color || '#7a7a7a' }) },
-      { name: 'projects',      store: 'projects',      map: r => ({ id: r.id, name: r.name, color: r.color, description: r.description, icon: r.icon || '', managerId: r.managerId || '' }) },
+      { name: 'projects',      store: 'projects',      map: r => ({ id: r.id, name: r.name, color: r.color, description: r.description, icon: r.icon || '', managerId: r.managerId || '', archived: !!r.archived, archiveNote: r.archiveNote || '', archivedAt: r.archivedAt || '' }) },
       {
         name: 'tasks', store: 'tasks',
         map: r => ({
@@ -466,9 +466,4 @@ export const syncActions = {
     ];
     this.notifications = [
       { id: this.generateId(), type: 'deadline', text: 'Deadline approaching: "User onboarding screens" is due tomorrow', taskId: t4, read: false, timestamp: new Date().toISOString() },
-      { id: this.generateId(), type: 'assign',   text: 'You were assigned to "Design homepage mockups"',               taskId: t1, read: false, timestamp: new Date(today - 3600000).toISOString() },
-      { id: this.generateId(), type: 'comment',  text: 'Marcus commented on "Design homepage mockups"',               taskId: t1, read: true,  timestamp: new Date(today - 86400000).toISOString() },
-    ];
-    this.save();
-  },
-}
+      { id: this.generateId(), type: 'assign',   text: 'You were assigned to "Design homepage mockups"',               taskId: t1, read: false, timestamp: ne

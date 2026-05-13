@@ -12,17 +12,22 @@
       </div>
       <span class="breadcrumb-current" aria-current="page">{{ taskCrumb.title }}</span>
     </template>
-    <!-- Project view: <view title> / <icon> <project name>
-         The leading "Project /" is the parent path, hidden until hover. -->
+    <!-- Project view: Projects / <icon> <project name>
+         The leading "Projects /" is the parent path, hidden until hover. -->
     <template v-else-if="projectCrumb">
       <div class="breadcrumb-parents">
-        <a href="#" @click.prevent="store.switchView(projectCrumb.viewKey)">{{ projectCrumb.viewTitle }}</a>
+        <a href="#" @click.prevent="store.switchView('home')">Projects</a>
         <span class="breadcrumb-sep" aria-hidden="true">/</span>
       </div>
       <span class="breadcrumb-current" aria-current="page">
-        <span v-if="projectCrumb.projectIcon" class="breadcrumb-icon" aria-hidden="true">{{ projectCrumb.projectIcon }}</span>
+        <span class="breadcrumb-icon" aria-hidden="true">{{ projectCrumb.projectIcon }}</span>
         {{ projectCrumb.projectName }}
       </span>
+    </template>
+    <!-- All other top-level views: just the view name as the current crumb so
+         the user always has location context (Notion's pattern). -->
+    <template v-else-if="viewCrumb">
+      <span class="breadcrumb-current" aria-current="page">{{ viewCrumb }}</span>
     </template>
   </nav>
 </template>
@@ -30,6 +35,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useAppStore } from '../stores/app.js'
+import { defaultProjectEmoji } from '../utils.js'
 
 const store = useAppStore()
 
@@ -53,13 +59,4 @@ const taskCrumb = computed(() => {
 // header reads like a Notion page: emoji + name.
 const projectCrumb = computed(() => {
   if (store.currentView !== 'project') return null
-  const project = store.projects.find(p => p.id === store.selectedProjectId)
-  if (!project) return null
-  return {
-    viewKey: store.currentView,
-    viewTitle: VIEW_TITLES[store.currentView] ?? '',
-    projectName: project.name,
-    projectIcon: project.icon || '',
-  }
-})
-</script>
+  const project = sto
