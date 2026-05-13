@@ -91,4 +91,10 @@ onMounted(() => {
     const msg  = reason?.message || String(reason) || ''
     if (name === 'AbortError') return
     if (/ResizeObserver loop/i.test(msg)) return
-  
+    if (/^Request was autocancelled$/i.test(msg)) return
+    if (store.appStarted && typeof store.toast === 'function') {
+      store.toast('Something went wrong. If the problem persists, try refreshing the page.', 'error')
+    }
+  })
+})
+</script>

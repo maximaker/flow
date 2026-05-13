@@ -958,4 +958,35 @@ export const useAppStore = defineStore('app', {
   },
 
   moveBoardColumn(id, direction) {
-    const idx =
+    const idx = this.boardColumns.findIndex(c => c.id === id);
+    if (idx < 0) return;
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= this.boardColumns.length) return;
+    const temp = this.boardColumns[idx];
+    this.boardColumns[idx] = this.boardColumns[newIdx];
+    this.boardColumns[newIdx] = temp;
+    this.saveBoardColumns();
+    this.renderColumnManager();
+    this.renderBoard();
+  },
+
+  // ===== DEPENDENCY HELPERS =====
+  isBlocked(task) {
+    if (!task.blockedBy?.length) return false;
+    return task.blockedBy.some(id => {
+      const blocker = this.tasks.find(t => t.id === id);
+      return blocker && blocker.status !== 'done';
+    });
+  },
+
+  getBlockedBy(task) {
+    if (!task.blockedBy?.length) return [];
+    return task.blockedBy.map(id => this.tasks.find(t => t.id === id)).filter(Boolean);
+  },
+
+  getBlocking(taskId) {
+    return this.tasks.filter(t => t.blockedBy?.includes(taskId));
+  },
+
+  }
+})

@@ -41,9 +41,14 @@ export const renderActions = {
     // Today's Focus + This Week's Focus
     const today = new Date().toISOString().split('T')[0];
     const todayDate = new Date(); todayDate.setHours(0,0,0,0);
+    // Archived projects are "out of mind" — their tasks should not surface in
+    // Today / This Week focus. Build a lookup once per render.
+    const archivedProjectIds = new Set(this.projects.filter(p => p.archived).map(p => p.id));
+    const notArchived = t => !t.projectId || !archivedProjectIds.has(t.projectId);
     const myUrgent = this.tasks.filter(t =>
       t.assigneeId === this.currentUserId &&
       t.status !== 'done' &&
+      notArchived(t) &&
       (t.dueDate === today || (t.dueDate && t.dueDate < today) || t.status === 'in-progress')
     );
 
@@ -53,7 +58,8 @@ export const renderActions = {
     const myWeek = this.tasks.filter(t =>
       t.assigneeId === this.currentUserId &&
       t.status !== 'done' &&
-      t.dueDate
+      t.dueDate &&
+      notArchived(t)
     ).sort((a,b) => a.dueDate.localeCompare(b.dueDate));
 
     const weekOverdue = myWeek.filter(t => t.dueDate < today);
@@ -644,9 +650,7 @@ export const renderActions = {
     for (let i = 0; i < days; i++) { const dd = new Date(startDate); dd.setDate(dd.getDate() + i); dates.push(dd); }
 
     // Skip rows whose bars wouldn't overlap the visible window — they'd render
-    // as empty rows otherwise, which reads as broken. Bars span from createdAt
-    // (or dueDate if none) to dueDate, so a task is visible iff its span
-    // intersects [startDate, endDate).
+    // as empty rows otherwise, which reads as broken.
     tasks = tasks.filter(t => {
       const ts = t.createdAt ? new Date(t.createdAt) : new Date(t.dueDate);
       const te = new Date(t.dueDate);
@@ -1089,8 +1093,6 @@ export const renderActions = {
       const isToday = d => d.toDateString() === today.toDateString();
       const isWeekend = d => d.getDay() === 0 || d.getDay() === 6;
 
-      // Only keep tasks whose span overlaps the visible window — empty rows
-      // otherwise.
       const tasks = tasksAll.filter(t => {
         const ts = t.createdAt ? new Date(t.createdAt) : new Date(t.dueDate);
         const te = new Date(t.dueDate);
@@ -1129,17 +1131,15 @@ export const renderActions = {
         html += `<div class="timeline-row"><div class="timeline-row-label" onclick="app.openTask('${t.id}')"><span class="project-dot" style="background:${projColor}"></span>${this.esc(t.title)}</div><div class="timeline-row-cells">${dates.map(dd => `<div class="timeline-cell ${isToday(dd)?'today':''} ${isWeekend(dd)?'weekend':''}"></div>`).join('')}${width > 0 ? `<div class="timeline-bar${doneClass}" style="left:${left}px;width:${width}px;background:${projColor}" onclick="app.openTask('${t.id}')">${width>60?this.esc(t.title):''}</div>` : ''}</div></div>`;
       });
 
-      // If all tasks fell outside the visible window, hint at how to find them
       if (!tasks.length) {
         html += `<div class="timeline-out-of-window">
           <p>${tasksAll.length} task${tasksAll.length===1?'':'s'} in this project — none fall in the next 4 weeks.</p>
           <p class="empty-state-sub">Use the arrows above to scroll back to find them.</p>
         </div>`;
       }
-      html += `</div>`; // /.timeline-container
+      html += `</div>`;
 
       container.innerHTML = html;
-      // Attach drag handlers to bars
       container.querySelectorAll('.timeline-bar').forEach(bar => {
         const onclick = bar.getAttribute('onclick');
         const match = onclick?.match(/openTask\('([^']+)'\)/);
@@ -1486,6 +1486,7 @@ export const renderActions = {
 
   handleMentionKeydown(e) {
     const dd = document.getElementById('mentions-dropdown');
+    if (!dd?.classList.contains('show')) return;
     if (e.key === 'ArrowDown') { e.preventDefault(); this._mentionIdx++; this.highlightMention(); }
     if (e.key === 'ArrowUp') { e.preventDefault(); this._mentionIdx = Math.max(0, this._mentionIdx - 1); this.highlightMention(); }
     if (e.key === 'Enter' || e.key === 'Tab') { const active = dd.querySelector('.mention-item.active'); if (active) { e.preventDefault(); this.insertMention(active.dataset.name); } }

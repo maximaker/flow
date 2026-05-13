@@ -912,7 +912,6 @@ export const taskActions = {
   },
 
   // ===== TASK PAGE-ICON (Notion-style emoji slot) =====
-  // Open/close the icon picker popover above the task title.
   toggleTaskIconPicker(ev) {
     ev?.stopPropagation();
     const picker = document.getElementById('panel-page-icon-picker');
@@ -924,7 +923,6 @@ export const taskActions = {
       this._iconPickerCleanup = null;
     } else {
       picker.classList.remove('hidden');
-      // Close on outside click — bind once, capture so we beat inner stops.
       const onDocClick = (e) => {
         if (!picker.contains(e.target) && !document.getElementById('panel-page-icon').contains(e.target)) {
           picker.classList.add('hidden');
@@ -953,7 +951,6 @@ export const taskActions = {
     const task = this.tasks.find(t => t.id === this.currentTaskId);
     if (!task) return;
     task.icon = '';
-    // Show the deterministic default again
     const el = document.getElementById('panel-page-icon');
     if (el) el.textContent = this.defaultTaskEmoji(task);
     document.getElementById('panel-page-icon-picker')?.classList.add('hidden');
@@ -1306,4 +1303,50 @@ export const taskActions = {
     if (/\b(by |due )?(today)\b/i.test(title)) { dueDate = today.toISOString().split('T')[0]; title = title.replace(/\b(by |due )?(today)\b/i, ''); }
     else if (/\b(by |due )?(tomorrow)\b/i.test(title)) { const d = new Date(today); d.setDate(d.getDate()+1); dueDate = d.toISOString().split('T')[0]; title = title.replace(/\b(by |due )?(tomorrow)\b/i, ''); }
     else if (/\b(by |due )?(next week)\b/i.test(title)) { const d = new Date(today); d.setDate(d.getDate()+7); dueDate = d.toISOString().split('T')[0]; title = title.replace(/\b(by |due )?(next week)\b/i, ''); }
-    else { const dueMatch = title.match(/due\s+(today|tomorrow|\d{4}-\d{2}-\d{2})/i); if (dueMatch) { const val = du
+    else { const dueMatch = title.match(/due\s+(today|tomorrow|\d{4}-\d{2}-\d{2})/i); if (dueMatch) { const val = dueMatch[1].toLowerCase(); const now = new Date(); if (val === 'today') dueDate = now.toISOString().split('T')[0]; else if (val === 'tomorrow') { now.setDate(now.getDate()+1); dueDate = now.toISOString().split('T')[0]; } else dueDate = val; title = title.replace(/due\s+\S+/i, ''); } }
+
+    // Parse labels
+    this.labels.forEach(l => { const re = new RegExp('\\b' + l.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i'); if (re.test(title)) { labelIds.push(l.id); title = title.replace(re, '').trim(); } });
+
+    title = title.replace(/\s+/g, ' ').trim();
+    if (!title) { this.toast('Please enter a task title'); return; }
+
+    if (!projectId && this.currentView === 'project' && this.selectedProjectId) projectId = this.selectedProjectId;
+    if (!projectId && this.projects.length === 1) projectId = this.projects[0].id;
+
+    this.tasks.push({ id: this.generateId(), title, description: '', status: 'todo', projectId, assigneeId, dueDate, priority, labelIds, blockedBy: [], order: this.tasks.filter(t => t.status === 'todo').length, parentId: '', deliverables: [], attachments: [], comments: [], activityLog: [{ text: 'Task created via quick add', timestamp: new Date().toISOString() }], createdAt: new Date().toISOString().split('T')[0] });
+    this.save(); this.render();
+    this.toast(`Task "${title}" created`, 'success');
+  },
+
+  // ===== ADHD HELPERS =====
+
+  startTask(taskId) {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    // Prefer a column whose id/name suggests "in progress"; fall back to second column
+    const progressCol = this.boardColumns.find(c =>
+      /progress|doing|active|started/i.test(c.id + c.name)
+    ) || this.boardColumns[1] || this.boardColumns[0];
+    if (!progressCol || task.status === progressCol.id) return;
+    this.pushUndo('Task started');
+    task.status = progressCol.id;
+    this.save();
+    this.render();
+    this.toast(`▶ Started — focus on: ${task.title}`);
+  },
+
+  snoozeTask(taskId, when) {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    this.pushUndo('Task snoozed');
+    const d = new Date(); d.setHours(0, 0, 0, 0);
+    if (when === 'tomorrow') d.setDate(d.getDate() + 1);
+    else if (when === 'week')  d.setDate(d.getDate() + 7);
+    task.dueDate = d.toISOString().split('T')[0];
+    this.save();
+    this.renderMyTasks();
+    const label = when === 'tomorrow' ? 'tomorrow' : 'next week';
+    this.toast(`Snoozed — back on your list ${label}`);
+  },
+}

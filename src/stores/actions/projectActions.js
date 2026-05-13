@@ -81,4 +81,88 @@ export const projectActions = {
   },
 
   // ===== ARCHIVE / UNARCHIVE =====
-  // Archive moves a project out of the active l
+  // Archive moves a project out of the active list without deleting tasks.
+  // Open tasks are allowed — user can attach a note explaining the state.
+  showArchiveModal(id) {
+    if (!this.canManageProject()) { this.toast('You do not have permission to manage projects', 'error'); return; }
+    const p = this.projects.find(x => x.id === id); if (!p) return;
+    this.archivingProjectId = id;
+    const openCount = this.tasks.filter(t => t.projectId === id && t.status !== 'done').length;
+    document.getElementById('archive-modal-project-name').textContent = p.name;
+    const warn = document.getElementById('archive-modal-warning');
+    if (openCount > 0) {
+      warn.textContent = `${openCount} open task${openCount === 1 ? '' : 's'} will be archived with the project. They'll stay visible from the project page but won't appear in active task lists.`;
+      warn.classList.add('show');
+    } else {
+      warn.textContent = 'All tasks in this project are complete.';
+      warn.classList.add('show');
+    }
+    document.getElementById('archive-modal-note').value = '';
+    document.getElementById('archive-modal-overlay').classList.add('show');
+    setTimeout(() => document.getElementById('archive-modal-note')?.focus(), 50);
+  },
+
+  closeArchiveModal() {
+    this.archivingProjectId = null;
+    document.getElementById('archive-modal-overlay')?.classList.remove('show');
+  },
+
+  confirmArchive() {
+    if (!this.archivingProjectId) return;
+    const p = this.projects.find(x => x.id === this.archivingProjectId);
+    if (!p) { this.closeArchiveModal(); return; }
+    const note = (document.getElementById('archive-modal-note')?.value || '').trim();
+    p.archived = true;
+    p.archiveNote = note;
+    p.archivedAt = new Date().toISOString();
+    if (this.selectedProjectId === p.id) {
+      this.selectedProjectId = '';
+      this.switchView('home');
+    }
+    this.save(); this.closeArchiveModal(); this.render();
+    this.toast(`"${p.name}" archived`, 'success');
+  },
+
+  async unarchiveProject(id) {
+    if (!this.canManageProject()) { this.toast('You do not have permission to manage projects', 'error'); return; }
+    const p = this.projects.find(x => x.id === id); if (!p) return;
+    p.archived = false;
+    p.archiveNote = '';
+    p.archivedAt = '';
+    this.save(); this.render();
+    this.toast(`"${p.name}" restored`, 'success');
+  },
+
+  // ===== From-edit-modal wrappers =====
+  archiveFromEdit() {
+    const id = this.editingProjectId;
+    if (!id) return;
+    this.closeProjectModal();
+    this.showArchiveModal(id);
+  },
+  unarchiveFromEdit() {
+    const id = this.editingProjectId;
+    if (!id) return;
+    this.closeProjectModal();
+    this.unarchiveProject(id);
+  },
+  async deleteFromEdit() {
+    const id = this.editingProjectId;
+    if (!id) return;
+    this.closeProjectModal();
+    await this.deleteProject(id);
+  },
+
+  selectProject(id) {
+    this.selectedProjectId = id;
+    this.switchView('project');
+    // Track this project in the local Recents list (Notion-style sidebar).
+    try {
+      const KEY = 'flow_recent_projects';
+      const list = JSON.parse(localStorage.getItem(KEY) || '[]').filter(x => x !== id);
+      list.unshift(id);
+      localStorage.setItem(KEY, JSON.stringify(list.slice(0, 5)));
+      this._recentsTick = (this._recentsTick || 0) + 1;
+    } catch (_) { /* localStorage blocked — recents just won't show */ }
+  },
+}

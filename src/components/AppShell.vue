@@ -1297,4 +1297,126 @@
         <div class="shortcut-row"><kbd>Ctrl+K</kbd><span>Command palette</span></div>
         <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>Undo</span></div>
         <div class="shortcut-row"><kbd>Ctrl+N</kbd><span>New task</span></div>
-        <div cl
+        <div class="shortcut-row"><kbd>B</kbd><span>Board view</span></div>
+        <div class="shortcut-row"><kbd>H</kbd><span>Home</span></div>
+        <div class="shortcut-row"><kbd>T</kbd><span>Timeline</span></div>
+        <div class="shortcut-row"><kbd>L</kbd><span>List view</span></div>
+        <div class="shortcut-row"><kbd>Esc</kbd><span>Close panel</span></div>
+      </div>
+    </button>
+
+    <!-- Conversational task creation -->
+    <div class="conv-task-overlay" id="conv-task-overlay">
+      <div class="conv-task-modal" id="conv-task-modal">
+        <div class="conv-task-header">
+          <div class="conv-task-header-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            New task
+          </div>
+          <div class="conv-task-header-right">
+            <button class="conv-advanced-link" @click="store.closeConvTask(); app.showTaskModal()">Advanced form</button>
+            <button class="conv-close-btn" @click="store.closeConvTask()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Answered questions scroll up here as a thread -->
+        <div class="conv-thread" id="conv-thread"></div>
+
+        <!-- Current question -->
+        <div class="conv-current-block">
+          <p class="conv-current-question" id="conv-current-question"></p>
+          <p class="conv-current-hint" id="conv-current-hint"></p>
+        </div>
+
+        <!-- Dynamic input area -->
+        <div class="conv-input-area" id="conv-input-area"></div>
+
+        <!-- Skip -->
+        <div class="conv-skip-row">
+          <button class="conv-skip-btn" id="conv-skip-btn" @click="store._convSkip()">Skip</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tour overlay (spotlight backdrop) -->
+    <div id="tour-overlay" class="tour-overlay"></div>
+
+    <!-- Tour tooltip -->
+    <div id="tour-tooltip" class="tour-tooltip">
+      <div class="tour-tooltip-header">
+        <span id="tour-step-label" class="tour-step-label">Step 1 of 6</span>
+        <button class="tour-skip-btn" @click="store.skipTour()">Skip tour</button>
+      </div>
+      <h3 id="tour-title" class="tour-title"></h3>
+      <p id="tour-body" class="tour-body"></p>
+      <div id="tour-dots" class="tour-dots"></div>
+      <div class="tour-footer">
+        <button id="tour-prev" class="btn-secondary btn-sm" @click="store.prevTourStep()">← Back</button>
+        <button id="tour-next" class="btn-primary btn-sm" @click="store.nextTourStep()">Next →</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, nextTick } from 'vue'
+import { useAppStore } from '../stores/app.js'
+import { TASK_EMOJI_PALETTE } from '../utils.js'
+import Breadcrumb from './Breadcrumb.vue'
+import SidebarProjectList from './SidebarProjectList.vue'
+import SidebarRecents from './SidebarRecents.vue'
+import SidebarUser from './SidebarUser.vue'
+import NotificationsList from './NotificationsList.vue'
+import HomeUpcomingDeadlines from './HomeUpcomingDeadlines.vue'
+import HomeRecentActivity from './HomeRecentActivity.vue'
+import HomeMyTasksOverview from './HomeMyTasksOverview.vue'
+import WorkloadChart from './WorkloadChart.vue'
+import SettingsAppearance from './SettingsAppearance.vue'
+
+const store = useAppStore()
+
+// Reactive nav-counter values previously updated imperatively by
+// renderNavBadges. The Vue templates above bind directly to these.
+const openTaskCount = computed(() => store.tasks.filter(t => t.status !== 'done' && store.isRootTask(t)).length)
+const inProgressCount = computed(() => store.tasks.filter(t => t.status === 'in-progress' && store.isRootTask(t)).length)
+const unreadCount = computed(() => store.notifications.filter(n => !n.read).length)
+
+// OS-aware shortcut label for the Search kbd hint.
+const shortcutLabel = computed(() => {
+  if (typeof navigator === 'undefined') return 'Ctrl K'
+  return /Mac|iPhone|iPad/i.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
+})
+
+// User name for aria-label on the user-as-brand row.
+const currentUserName = computed(() => {
+  const u = (typeof store.getCurrentUser === 'function' && store.getCurrentUser()) || store.users[0]
+  return u?.name || 'account'
+})
+
+// True when the project currently open in the Edit modal is archived — used
+// to swap the Archive button for a Restore button in the modal footer.
+const editingProjectArchived = computed(() => {
+  if (!store.editingProjectId) return false
+  const p = store.projects.find(x => x.id === store.editingProjectId)
+  return !!p?.archived
+})
+
+// Quick-add popup Enter handler — reads the input, runs the smart-parser
+// in `quickAdd`, closes the popup. Empty input is a no-op (the store
+// already guards against that, but we close anyway for snappier feedback).
+function onQuickAddEnter (e) {
+  const input = e.target
+  const text = (input.value || '').trim()
+  if (text) store.quickAdd(text)
+  input.value = ''
+  store.closeQuickAdd()
+}
+
+onMounted(async () => {
+  await nextTick()
+  store.bindEvents()
+  store.render()
+})
+</script>
