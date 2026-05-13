@@ -4025,3 +4025,94 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .task-palette-hints { display: none; }
   .task-palette-footer { justify-content: flex-end; }
 }
+
+/* ============================================================
+ * Mobile rules for components added in the Notion-alignment work.
+ * Targets phones (≤480px). Existing mobile block at @media 767px
+ * already handles the legacy components; this block fills the gaps
+ * for the new ones (task palette, icon picker, split modal footer,
+ * archive modal, archived/recents sidebar sections).
+ * ============================================================ */
+@media (max-width: 480px) {
+  /* Task palette: take more of the viewport and use tighter chrome.
+   * The input row still wraps if a long template name pushes the
+   * close button off — allow that with flex-wrap. */
+  .task-palette-overlay { padding-top: 8vh; }
+  .task-palette {
+    width: 100%;
+    max-width: calc(100vw - 16px);
+    max-height: calc(100vh - 10vh - 16px);
+    border-radius: 12px;
+  }
+  .task-palette-input-wrap { padding: 12px 14px; gap: 8px; flex-wrap: wrap; }
+  .task-palette-input-wrap input { font-size: 16px; /* prevent iOS zoom-in */ }
+  .task-palette-template { font-size: 11px; padding: 3px 6px; max-width: 110px; }
+  .task-palette-props { padding: 8px 6px; }
+  .task-palette-prop { padding: 8px 8px; gap: 6px; }
+  .task-palette-prop > label { width: 72px; font-size: 12px; }
+  .task-palette-prop select,
+  .task-palette-prop input[type="date"],
+  .task-palette-prop textarea { font-size: 16px; /* iOS no-zoom */ }
+  .task-palette-quickpicks button { font-size: 12px; padding: 4px 10px; }
+  .task-palette-footer { padding: 10px 12px; }
+  /* Hints already hide ≤600px in the original rule. */
+
+  /* Task page-icon picker popover: keep inside the slide-panel. */
+  .panel-page-icon-picker {
+    width: 252px;
+    max-width: calc(100vw - 24px);
+  }
+  .icon-picker-grid { grid-template-columns: repeat(5, 1fr); }
+  .icon-picker-cell { font-size: 22px; /* bigger touch target */ }
+
+  /* Modal footer-split: stack the destructive row above the action row so
+   * the two button groups have full-width buttons that hit ≥44px tall. */
+  .modal-footer-split {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .modal-footer-left,
+  .modal-footer-right { flex-wrap: wrap; gap: 6px; }
+  .modal-footer-right .btn-primary,
+  .modal-footer-right .btn-secondary { flex: 1; min-height: 40px; }
+  .btn-ghost { padding: 8px 10px; min-height: 36px; font-size: 13px; }
+
+  /* Archive modal — already uses .modal-compact (460px capped to 90vw),
+   * fits fine; just tighten the lead/copy padding. */
+  .archive-modal-lead { font-size: 13px; }
+  .archive-modal-warning { font-size: 12px; padding: 8px 10px; }
+
+  /* Sidebar Archived + Recents sections: bottom of the drawer; nothing to
+   * change visually — the parent .sidebar collapses to a full-width sheet
+   * via the existing mobile rules. Just guarantee the count badge stays
+   * readable at small sizes. */
+  .archived-count { font-size: 9px; min-width: 16px; }
+
+  /* Project Board toolbar (just-added Columns + Add Task above the kanban).
+   * Stack the two button groups so they don't shove off-screen. */
+  #view-project .board-header { flex-direction: column; align-items: stretch; gap: 8px; }
+  #view-project .board-header-left { justify-content: flex-start; }
+  #view-project .board-header > .btn-primary { width: 100%; }
+
+  /* Welcome card hero: 28px h2 reads too big at narrow widths. */
+  .welcome-card h2 { font-size: 22px; }
+
+  /* Property rows in the task panel: shrink the label rail so the value
+   * has room to render comfortably. */
+  .context-chip::before,
+  .meta-row label { width: 72px !important; font-size: 12px !important; }
+
+  /* Page-icon at top of task panel: still big, but slightly smaller. */
+  .panel-page-icon { width: 56px; height: 56px; font-size: 44px; }
+}
+
+/* Very narrow phones (<360px) — older iPhones, foldables in portrait. */
+@media (max-width: 359px) {
+  .task-palette-prop > label { width: 60px; font-size: 11px; }
+  .context-chip::before,
+  .meta-row label { width: 60px !important; }
+  .welcome-card h2 { font-size: 20px; }
+  .panel-title-input { font-size: 24px; }
+  .icon-picker-grid { grid-template-columns: repeat(4, 1fr); }
+}
