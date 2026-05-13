@@ -568,7 +568,7 @@ export const useAppStore = defineStore('app', {
       this.renderNavBadges();
       // Breadcrumb is rendered by src/components/Breadcrumb.vue — no imperative render call needed.
     } catch (e) {
-      console.error('[Flow] Shell render error:', e);
+      console.error('[Plans] Shell render error:', e);
     }
     try {
       switch (this.currentView) {
@@ -582,7 +582,7 @@ export const useAppStore = defineStore('app', {
         case 'settings': this.renderSettings(); break;
       }
     } catch (e) {
-      console.error('[Flow] View render error:', e);
+      console.error('[Plans] View render error:', e);
       // Show an in-place error rather than a blank view
       const contentArea = document.querySelector('.content-area');
       if (contentArea) {

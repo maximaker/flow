@@ -71,7 +71,7 @@ export function captureError(err, context = {}) {
   // Always surface to the dev console — production builds strip console.log
   // via vite.config.js but keep console.error, which is what we use here.
   // eslint-disable-next-line no-console
-  console.error('[Flow]', err, context)
+  console.error('[Plans]', err, context)
   if (!endpoint) return
   buffer.push(makePayload(err, context))
   if (buffer.length > BUFFER_CAP) buffer.splice(0, buffer.length - BUFFER_CAP)

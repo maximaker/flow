@@ -10,7 +10,7 @@
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
         <h2>Something went wrong</h2>
-        <p>Flow couldn't start up. This is usually a connection issue.</p>
+        <p>Plans couldn't start up. This is usually a connection issue.</p>
         <p class="init-error-detail">{{ initError }}</p>
         <button class="btn-primary" @click="retryInit">Try again</button>
       </div>
@@ -67,7 +67,7 @@ async function runInit() {
   try {
     await store.init()
   } catch (e) {
-    console.error('[Flow] init() failed:', e)
+    console.error('[Plans] init() failed:', e)
     initError.value = e?.message || 'Unknown error'
   } finally {
     initialising.value = false

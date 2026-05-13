@@ -26,7 +26,7 @@ export const authActions = {
         // either way — a brief offline-with-good-token blip will require
         // a re-login, which is the safe default.
         // eslint-disable-next-line no-console
-        console.warn('[Flow] Auth refresh failed — clearing token and showing login', e?.message);
+        console.warn('[Plans] Auth refresh failed — clearing token and showing login', e?.message);
         pb.authStore.clear();
         this.currentUserId = null;
         this.showLoginScreen();

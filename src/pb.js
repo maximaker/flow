@@ -12,9 +12,9 @@ if (!pbUrl) {
         <p style="font-size:13px;color:#888">Add <code>VITE_PB_URL=https://your-pb-instance.com</code> to your Netlify environment variables and redeploy.</p>
       </div>`;
     });
-    throw new Error('[Flow] VITE_PB_URL is required in production. Set it in your Netlify environment variables.');
+    throw new Error('[Plans] VITE_PB_URL is required in production. Set it in your Netlify environment variables.');
   } else {
-    console.warn('[Flow] VITE_PB_URL is not set. Add it to your .env file — see .env.example.');
+    console.warn('[Plans] VITE_PB_URL is not set. Add it to your .env file — see .env.example.');
   }
 }
 

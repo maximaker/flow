@@ -12,7 +12,7 @@
           <path class="flow-path" d="M6 8 C10 8, 12 6, 16 6 C20 6, 22 10, 26 10 M6 16 C10 16, 12 14, 16 14 C20 14, 22 18, 26 18 M6 24 C10 24, 12 22, 16 22 C20 22, 22 26, 26 26"
             fill="none" stroke="url(#flow-grad-login)" stroke-width="2.5" stroke-linecap="round"/>
         </svg>
-        <h1>Flow</h1>
+        <h1>Plans</h1>
       </div>
       <p class="login-subtitle">Sign in to your workspace</p>
       <div class="login-form">

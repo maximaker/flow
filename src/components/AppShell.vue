@@ -555,7 +555,7 @@
                 <div class="settings-pane-header">
                   <div>
                     <h2>Appearance</h2>
-                    <p class="subtitle">Customize how Flow looks for you</p>
+                    <p class="subtitle">Customize how Plans looks for you</p>
                   </div>
                 </div>
                 <SettingsAppearance />

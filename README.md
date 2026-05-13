@@ -1,4 +1,4 @@
-# Flow
+# Plans
 
 A project-management SPA — tasks, boards, timelines, comments — backed by [PocketBase](https://pocketbase.io).
 
